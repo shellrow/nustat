@@ -34,7 +34,6 @@ pub fn init(handle: tauri::AppHandle) {
     match db::init_db() {
         Ok(_) => {
             println!("Database initialized");
-            
             /* tauri::async_runtime::spawn(async move {
                 
             }); */
@@ -42,6 +41,14 @@ pub fn init(handle: tauri::AppHandle) {
         Err(e) => {
             eprintln!("Error: {:?}", e);
         }
+    }
+    if db::ip_db_exists() {
+        // For IP info update
+        let mut netstat_strage_ipinfo = netstat_strage_state.inner().clone();
+        thread::spawn(move || {
+            println!("[start] ipinfo_update");
+            nustat_core::ipinfo::start_ipinfo_update(&mut netstat_strage_ipinfo);
+        });
     }
 }
 

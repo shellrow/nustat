@@ -1,6 +1,6 @@
 use default_net::mac::MacAddr;
 use netprobe::{neighbor::DeviceResolver, setting::ProbeSetting};
-use std::{collections::HashMap, net::IpAddr};
+use std::{collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
 use xenet::net::ipnet::{Ipv4Net, Ipv6Net};
 use crate::net::interface;
 
@@ -83,4 +83,25 @@ pub fn get_mac_addresses(ips: Vec<IpAddr>, src_ip: IpAddr) -> HashMap<IpAddr, St
         }
     }
     map
+}
+
+pub fn ipv4_to_int(ipv4: Ipv4Addr) -> u64 {
+    //let ipv4: Ipv4Addr = ip_addr.parse().unwrap_or(Ipv4Addr::LOCALHOST);
+    let o1:u64 = ipv4.octets()[0].into();
+    let o2:u64 = ipv4.octets()[1].into();
+    let o3:u64 = ipv4.octets()[2].into();
+    let o4:u64 = ipv4.octets()[3].into();
+    let ip_int: u64 = ((o1<<24)+(o2<<16)+(o3<<8)+o4).into();
+    return ip_int;
+}
+
+pub fn ipv6_to_dec(ipv6: Ipv6Addr)-> u128 {
+    //let ipv6: Ipv6Addr = ip_addr.parse().unwrap_or(Ipv6Addr::LOCALHOST);
+    let segments: [u16; 8] = ipv6.segments();
+    let mut ip_int: u128 = 0;
+    for i in 0..ipv6.segments().len() {
+        let cur_seg: u128 = segments[(ipv6.segments().len() - 1) - i].into();
+        ip_int = (cur_seg << i*16) | ip_int;
+    }
+    return ip_int;
 }

@@ -25,6 +25,7 @@ chrono = { version = "0.4", features = ["serde"] }
 ipnet = "2.5"
 regex = "1.6"
 rusqlite = { version = "0.30.0", features = ["bundled", "array"] }
+home = "0.5"
 
 [[example]]
 name = "parse_frame"

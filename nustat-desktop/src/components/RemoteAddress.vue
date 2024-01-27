@@ -85,7 +85,7 @@ onUnmounted(() => {
                 <Column field="traffic_info.packet_received" header="Packet Recv" ></Column>
                 <Column field="traffic_info.bytes_sent" header="Bytes Sent" ></Column>
                 <Column field="traffic_info.bytes_received" header="Bytes Recv" ></Column>
-                <Column field="country" header="Country" ></Column>
+                <Column field="country_code" header="Country" ></Column>
                 <Column field="asn" header="ASN" ></Column>
             </DataTable>
         </template>

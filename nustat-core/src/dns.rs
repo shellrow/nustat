@@ -320,6 +320,6 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
                 println!("[dns_map_update] lock error: {}", e);
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::sleep(std::time::Duration::from_secs(12));
     }
 }
