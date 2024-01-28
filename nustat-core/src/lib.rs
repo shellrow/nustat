@@ -6,3 +6,4 @@ pub mod pcap;
 pub mod dns;
 pub mod ipinfo;
 pub mod db;
+pub mod notification;

@@ -122,10 +122,44 @@ pub enum AddressFamily {
     IPv6
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
 pub enum TransportProtocol {
     TCP,
     UDP
+}
+
+impl TransportProtocol {
+    pub fn as_str(&self) -> &str {
+        match self {
+            TransportProtocol::TCP => "TCP",
+            TransportProtocol::UDP => "UDP",
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
+pub struct PortInfo {
+    pub port: u16,
+    pub protocol: TransportProtocol,
+}
+
+impl PortInfo {
+    pub fn new(port: u16, protocol: TransportProtocol) -> Self {
+        PortInfo {
+            port: port,
+            protocol: protocol,
+        }
+    }
+    pub fn to_key_string(&self) -> String {
+        format!("{}-{}", self.port, self.protocol.as_str())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PortTrafficInfo {
+    pub port: u16,
+    pub protocol: TransportProtocol,
+    pub traffic_info: TrafficInfo,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

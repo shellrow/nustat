@@ -29,7 +29,7 @@ const onRowSelect = (event: any) => {
     selectedHostKv.value.push({key: 'Bytes Received', value: host.traffic_info.bytes_received.toString()});
     selectedHostKv.value.push({key: 'Country Code', value: host.country_code});
     selectedHostKv.value.push({key: 'Country Name', value: host.country_name});
-    selectedHostKv.value.push({key: 'ASN', value: host.asn});
+    selectedHostKv.value.push({key: 'ASN', value: host.asn.toString()});
     selectedHostKv.value.push({key: 'AS Name', value: host.as_name});
     dialogVisible.value = true;
 };

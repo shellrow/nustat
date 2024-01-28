@@ -4,7 +4,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::sys;
 
-use super::{protocol::Protocol, traffic::TrafficInfo};
+use super::traffic::TrafficInfo;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteHostInfo {
@@ -18,7 +18,7 @@ pub struct RemoteHostInfo {
     pub asn: u32,
     pub as_name: String,
     pub traffic_info: TrafficInfo,
-    pub protocol_stat: HashMap<Protocol, TrafficInfo>,
+    pub protocol_stat: HashMap<String, TrafficInfo>,
     pub first_seen: String,
     pub updated_at: String,
 }

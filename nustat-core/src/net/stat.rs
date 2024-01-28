@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::{collections::{HashMap, HashSet}, net::{IpAddr, SocketAddr}};
 use super::{host::RemoteHostInfo, protocol::Protocol, traffic::{Direction, TrafficInfo}, packet::PacketFrame};
 use super::interface;
-use crate::socket::{SocketConnection, SocketConnectionInfo, SocketStatus};
+use crate::socket::{PortInfo, SocketConnection, SocketConnectionInfo, SocketStatus, TransportProtocol};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct NetStatStrage {
@@ -192,7 +192,7 @@ impl NetStatStrage {
         // Update SocketInfo if the packet is TCP or UDP.
         if let Some(transport) = frame.transport {
             if let Some(tcp) = transport.tcp {
-                let tcp_traffic_info: &mut TrafficInfo = remote_host.protocol_stat.entry(Protocol::TCP).or_insert(TrafficInfo::new());
+                let tcp_traffic_info: &mut TrafficInfo = remote_host.protocol_stat.entry(PortInfo::new(remote_port, TransportProtocol::TCP).to_key_string()).or_insert(TrafficInfo::new());
                 match direction {
                     Direction::Egress => {
                         tcp_traffic_info.packet_sent += 1;
@@ -228,7 +228,7 @@ impl NetStatStrage {
                 }
             }
             if let Some(_udp) = transport.udp {
-                let udp_traffic_info: &mut TrafficInfo = remote_host.protocol_stat.entry(Protocol::UDP).or_insert(TrafficInfo::new());
+                let udp_traffic_info: &mut TrafficInfo = remote_host.protocol_stat.entry(PortInfo::new(remote_port, TransportProtocol::UDP).to_key_string()).or_insert(TrafficInfo::new());
                 match direction {
                     Direction::Egress => {
                         udp_traffic_info.packet_sent += 1;

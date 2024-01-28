@@ -1,4 +1,5 @@
 pub mod ip;
+pub mod service;
 
 pub const DB_NAME: &str = "nustat.db";
 pub const IP_DB_NAME: &str = "ip.db";

@@ -3,8 +3,6 @@ use nustat_core::{net::stat::NetStatStrage, pcap};
 
 fn main() {
     let netstat_strage: Arc<Mutex<NetStatStrage>> = Arc::new(Mutex::new(NetStatStrage::new()));
-
-    // Cloning the Arc is not necessary
     let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
     let mut netstat_strage_dns = Arc::clone(&netstat_strage);
     let mut netstat_strage_socket = Arc::clone(&netstat_strage);

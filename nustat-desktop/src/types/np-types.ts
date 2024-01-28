@@ -191,6 +191,16 @@ export interface TrafficInfo {
     bytes_received: number,
 }
 
+export enum TransportProtocol {
+    TCP,
+    UDP
+}
+
+export interface PortInfo {
+    port: number,
+    protocol: TransportProtocol,
+}
+
 export interface RemoteHostInfo {
     if_index: number,
     if_name: string,
@@ -199,7 +209,7 @@ export interface RemoteHostInfo {
     hostname: string,
     country_code: string,
     country_name: string,
-    asn: string,
+    asn: number,
     as_name: string,
     traffic_info: TrafficInfo,
     protocol_stat: { [key: string]: TrafficInfo },
@@ -210,4 +220,50 @@ export interface RemoteHostInfo {
 export interface ProcessTrafficInfo {
     process: ProcessInfo,
     traffic: TrafficInfo,
+}
+
+export interface ProcessDisplayInfo {
+    pid: number,
+    name: string,
+    traffic: TrafficInfo,
+}
+
+export interface HostDisplayInfo {
+    ip_addr: string,
+    host_name: string,
+    country_code: string,
+    country_name: string,
+    asn: number,
+    as_name: string,
+    traffic: TrafficInfo,
+}
+
+export interface ServiceDisplayInfo {
+    port: number,
+    name: string,
+    traffic: TrafficInfo,
+}
+
+export enum NotificationType {
+    Traffic,
+    RemoteHost,
+    Protocol,
+}
+
+export interface Notification {
+    title: string,
+    body: string,
+    notification_type: NotificationType,
+    timestamp: string,
+}
+
+export interface Overview {
+    default_if_index: number,
+    default_if_name: string,
+    captured_packets: number,
+    traffic: TrafficInfo,
+    top_processes: ProcessDisplayInfo[],
+    top_remote_hosts: HostDisplayInfo[],
+    top_app_protocols: ServiceDisplayInfo[],
+    notifications: Notification[],
 }
