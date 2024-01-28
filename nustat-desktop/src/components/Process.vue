@@ -1,135 +1,69 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
+import { invoke } from '@tauri-apps/api/tauri';
+//import { listen } from '@tauri-apps/api/event';
+import { KVItem } from '../types/common';
+import { ProcessTrafficInfo } from '../types/np-types';
+import { WindowUtil } from '../libnp/window-util';
+import { setRoutine } from '../libnp/routine';
+import { DataTableRowSelectEvent } from 'primevue/datatable';
 
-const sampleData = ref([
-  {
-    pid: 123,
-    pname: 'exampleProcess1',
-    bytes_sent: 2048,
-    bytes_received: 1024,
-    packets_sent: 50,
-    packets_received: 25,
-    user: 'john_doe',
-  },
-  {
-    pid: 456,
-    pname: 'anotherProcess2',
-    bytes_sent: 40960,
-    bytes_received: 8192,
-    packets_sent: 200,
-    packets_received: 40,
-    user: 'roor',
-  },
-  {
-    pid: 789,
-    pname: 'thirdProcess3',
-    bytes_sent: 8192,
-    bytes_received: 2048,
-    packets_sent: 30,
-    packets_received: 15,
-    user: 'john_doe',
-  },
-  {
-    pid: 1011,
-    pname: 'processFour',
-    bytes_sent: 16384,
-    bytes_received: 4096,
-    packets_sent: 80,
-    packets_received: 20,
-    user: 'john_doe',
-  },
-  {
-    pid: 1213,
-    pname: 'sampleProcess5',
-    bytes_sent: 3072,
-    bytes_received: 10240,
-    packets_sent: 60,
-    packets_received: 30,
-    user: 'john_doe',
-  },
-  {
-    pid: 1415,
-    pname: 'processSix',
-    bytes_sent: 5120,
-    bytes_received: 2560,
-    packets_sent: 25,
-    packets_received: 12,
-    user: 'john_doe',
-  },
-  {
-    pid: 1617,
-    pname: 'processSeven',
-    bytes_sent: 20480,
-    bytes_received: 6144,
-    packets_sent: 100,
-    packets_received: 50,
-    user: 'roor',
-  },
-  {
-    pid: 1819,
-    pname: 'processEight',
-    bytes_sent: 1024,
-    bytes_received: 512,
-    packets_sent: 10,
-    packets_received: 5,
-    user: 'root',
-  },
-]);
-
-const selectedHostKv = ref(
-    [
-        {
-            key: 'IP Address',
-            value: '1.1.1.1',
-        },
-        {
-            key: 'Hostname',
-            value: 'one.one.one.one',
-        },
-        {
-            key: 'Port',
-            value: '53',
-        },
-        {
-            key: 'Protocol',
-            value: 'UDP',
-        },
-        {
-            key: 'Packets',
-            value: '24',
-        },
-        {
-            key: 'Bytes',
-            value: '4488',
-        },
-        {
-            key: 'Country',
-            value: 'US',
-        },
-        {
-            key: 'ASN',
-            value: 'AS13335 Cloudflare, Inc.',
-        },
-        {
-            key: 'Info',
-            value: 'DNS Query',
-        },
-    ]
-);
-
+const tableData = ref<ProcessTrafficInfo[]>([]);
+const selectedHostKv = ref<KVItem[]>([]);
+const isLoading = ref(false);
 const selectedHost = ref<any>();
-
 const dialogVisible = ref(false);
+const windowUtil = new WindowUtil();
+const autoUpdate = ref(false);
 
-const onRowSelect = (event: any) => {
+const routine = setRoutine({
+  interval: 5000,
+  callback: () => { 
+        if (autoUpdate.value) {
+            GetProcessInfo(); 
+        }
+    }
+});
+
+const GetProcessInfo = async() => {
+    isLoading.value = true;
+    const result = await invoke<ProcessTrafficInfo[]>('get_process_info');
+    tableData.value = result;
+    isLoading.value = false;
+}
+
+const onRowSelect = (event: DataTableRowSelectEvent) => {
+    const process_info: ProcessTrafficInfo = event.data;
+    selectedHostKv.value = [];
+    selectedHostKv.value.push({key: 'Process ID', value: process_info.process.pid.toString()});
+    selectedHostKv.value.push({key: 'Process Name', value: process_info.process.name});
+    selectedHostKv.value.push({key: 'Bytes Sent', value: process_info.traffic.bytes_sent.toString()});
+    selectedHostKv.value.push({key: 'Bytes Received', value: process_info.traffic.bytes_received.toString()});
+    selectedHostKv.value.push({key: 'Packets Sent', value: process_info.traffic.packet_sent.toString()});
+    selectedHostKv.value.push({key: 'Packets Received', value: process_info.traffic.packet_received.toString()});
+    selectedHostKv.value.push({key: 'User ID', value: process_info.process.user_info?.user_id.toString() || ''});
+    selectedHostKv.value.push({key: 'User Name', value: process_info.process.user_info?.user_name || ''});
+    selectedHostKv.value.push({key: 'Group ID', value: process_info.process.user_info?.group_id.toString() || ''});
+    selectedHostKv.value.push({key: 'Groups', value: process_info.process.user_info?.groups.join(', ') || ''});
     dialogVisible.value = true;
     console.log(event.data);
 };
 
-const onRowUnselect = (event: any) => {
+const onRowUnselect = (event: DataTableRowSelectEvent) => {
     dialogVisible.value = false;
     console.log(event.data);
 }
+
+onMounted(() => {
+    windowUtil.mount();
+    GetProcessInfo();
+    routine.start();
+});
+
+onUnmounted(() => {
+    windowUtil.unmount();
+    routine.stop();
+});
 
 </script>
 
@@ -141,16 +75,26 @@ const onRowUnselect = (event: any) => {
 
 <template>
     <Card>
-        <template #title> Active processes and their communication details. </template>
+        <template #title> 
+            <div class="flex justify-content-between">
+                <div class="flex">
+                    Network-Active Processes
+                </div>
+                <div class="flex">
+                    <ToggleButton v-model="autoUpdate" onLabel="Auto" offLabel="Manual" onIcon="pi pi-play" offIcon="pi pi-pause" class="mr-2" />
+                    <Button type="button" icon="pi pi-refresh" outlined :loading="isLoading" @click="GetProcessInfo" :disabled="autoUpdate" />
+                </div>
+            </div>
+        </template>
         <template #content>
-            <DataTable :value="sampleData" v-model:selection="selectedHost" selectionMode="single" dataKey="pid" @rowSelect="onRowSelect" @rowUnselect="onRowUnselect" scrollable scrollHeight="70vh" tableStyle="min-width: 50rem">
-                <Column field="pid" header="Process ID"></Column>
-                <Column field="pname" header="Process Name"></Column>
-                <Column field="bytes_sent" header="Bytes Sent"></Column>
-                <Column field="bytes_received" header="Bytes Received"></Column>
-                <Column field="packets_sent" header="Packets Sent"></Column>
-                <Column field="packets_received" header="Packets Received"></Column>
-                <Column field="user" header="User"></Column>
+            <DataTable :value="tableData" v-model:selection="selectedHost" :loading="isLoading" :virtualScrollerOptions="{ itemSize: 20 }" selectionMode="single" dataKey="process.pid" @rowSelect="onRowSelect" @rowUnselect="onRowUnselect" size="small" scrollable :scrollHeight="(windowUtil.windowSize.innerHeight-200).toString() + 'px'" tableStyle="min-width: 30rem">
+                <Column field="process.pid" header="Process ID" sortable></Column>
+                <Column field="process.name" header="Process Name" sortable></Column>
+                <Column field="traffic.bytes_sent" header="Bytes Sent" sortable></Column>
+                <Column field="traffic.bytes_received" header="Bytes Received" sortable></Column>
+                <Column field="traffic.packet_sent" header="Packets Sent" sortable></Column>
+                <Column field="traffic.packet_received" header="Packets Received" sortable></Column>
+                <Column field="process.user_info.user_name" header="User"></Column>
             </DataTable>
         </template>
     </Card>

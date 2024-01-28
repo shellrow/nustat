@@ -206,3 +206,8 @@ export interface RemoteHostInfo {
     first_seen: string,
     updated_at: string,
 }
+
+export interface ProcessTrafficInfo {
+    process: ProcessInfo,
+    traffic: TrafficInfo,
+}

@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import Dashboard from '../components/Dashboard.vue';
 import Packet from '../components/Packet.vue';
 import RemoteAddress from '../components/RemoteAddress.vue';
-import Connection from '../components/Connection.vue';
+import Socket from '../components/Socket.vue';
 import Process from '../components/Process.vue';
 
 const routes = [
@@ -27,9 +27,9 @@ const routes = [
     component: RemoteAddress,
   },
   {
-    path: '/connection',
-    name: 'Connection',
-    component: Connection,
+    path: '/socket',
+    name: 'Socket',
+    component: Socket,
   },
   {
     path: '/process',

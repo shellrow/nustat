@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use sysinfo::{PidExt, ProcessExt, SystemExt, ProcessRefreshKind, UserExt};
 use chrono::{DateTime, TimeZone, NaiveDateTime, Local};
 
+use crate::net::traffic::TrafficInfo;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct UserInfo {
     pub user_id: String,
@@ -21,6 +23,12 @@ pub struct ProcessInfo {
     pub user_info: Option<UserInfo>,
     pub start_time: String,
     pub elapsed_time: u64,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProcessTrafficInfo {
+    pub process: ProcessInfo,
+    pub traffic: TrafficInfo,
 }
 
 pub fn get_process_map() -> HashMap<u32, ProcessInfo> {

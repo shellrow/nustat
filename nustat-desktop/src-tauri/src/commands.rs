@@ -1,17 +1,15 @@
+use std::collections::HashMap;
 use std::sync::mpsc::{channel, Receiver, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use nustat_core::net::host::RemoteHostInfo;
 use nustat_core::net::stat::NetStatStrage;
+use nustat_core::net::traffic::TrafficInfo;
+use nustat_core::process::{ProcessInfo, ProcessTrafficInfo};
 use tauri::{Manager, State};
 use nustat_core::socket::{SocketInfo, SocketInfoOption};
 use nustat_core::pcap::CaptureReport;
 use nustat_core::net::packet::PacketFrame;
-
-#[tauri::command]
-pub fn greet(name: &str) -> String {
-    format!("Hello, {}! You've been greeted from Rust!", name)
-}
 
 #[tauri::command]
 pub async fn start_packet_capture(app_handle: tauri::AppHandle) -> CaptureReport {
@@ -87,4 +85,43 @@ pub fn get_remote_hosts(netstat: State<'_, Arc<Mutex<NetStatStrage>>>) -> Vec<Re
             Vec::new()
         }
     }
+}
+
+#[tauri::command]
+pub fn get_process_info(netstat: State<'_, Arc<Mutex<NetStatStrage>>>) -> Vec<ProcessTrafficInfo> {
+    let mut processes: Vec<ProcessTrafficInfo> = Vec::new();
+    let mut process_list: Vec<ProcessInfo> = Vec::new();
+    let mut process_map: HashMap<u32, TrafficInfo> = HashMap::new();
+    match netstat.try_lock() {
+        Ok(netstat_strage) => {
+            for (_conn, conn_info) in netstat_strage.connections.iter() {
+                if let Some(proc) = &conn_info.process {
+                    match process_map.get(&proc.pid) {
+                        Some(traffic_info) => {
+                            let mut traffic_info = traffic_info.clone();
+                            traffic_info.add_traffic(&conn_info.traffic_info);
+                            process_map.insert(proc.pid, traffic_info);
+                        }
+                        None => {
+                            process_map.insert(proc.pid, conn_info.traffic_info.clone());
+                            process_list.push(proc.clone());
+                        }
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            println!("get_remote_hosts lock error: {:?}", e);
+            return processes;
+        }
+    }
+    for proc in process_list {
+        if let Some(traffic_info) = process_map.get(&proc.pid) {
+            processes.push(ProcessTrafficInfo {
+                process: proc,
+                traffic: traffic_info.clone(),
+            });
+        }
+    }
+    processes
 }
