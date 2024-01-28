@@ -70,7 +70,7 @@ onUnmounted(() => {
                     <i class="pi pi-bars text-4xl"></i>
                 </a>
                 <span class="font-medium" style="color: var(--highlight-text-color)">
-                    NetPulsar
+                    NuStat
                 </span>
             </div>
             <div class="overflow-y-auto">
@@ -100,10 +100,10 @@ onUnmounted(() => {
                                 </router-link>
                             </li>
                             <li>
-                                <router-link to="/connection">
+                                <router-link to="/socket">
                                     <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
                                         <i class="pi pi-link mr-2"></i>
-                                        <span class="font-medium">Connection</span>
+                                        <span class="font-medium">Socket</span>
                                     </a>
                                 </router-link>
                             </li>
