@@ -18,3 +18,4 @@ Cargo.lock
 
 # debug
 /.vscode/
+flamegraph.svg
