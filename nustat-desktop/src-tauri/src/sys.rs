@@ -1,6 +1,5 @@
 use std::thread;
 use std::sync::{Arc, Mutex};
-use nustat_core::db;
 use nustat_core::pcap;
 use tauri::Manager;
 
@@ -31,35 +30,13 @@ pub fn init(handle: tauri::AppHandle) {
         println!("[start] dns_map_update");
         nustat_core::dns::start_dns_map_update(&mut netstat_strage_dns);
     });
-    match db::init_db() {
-        Ok(_) => {
-            println!("Database initialized");
-            /* tauri::async_runtime::spawn(async move {
-                
-            }); */
-        }
-        Err(e) => {
-            eprintln!("Error: {:?}", e);
-        }
-    }
-    if db::ip_db_exists() {
-        // For IP info update
-        let mut netstat_strage_ipinfo = netstat_strage_state.inner().clone();
-        thread::spawn(move || {
-            println!("[start] ipinfo_update");
-            nustat_core::ipinfo::start_ipinfo_update(&mut netstat_strage_ipinfo);
-        });
-    }
+    let mut netstat_strage_ipinfo = netstat_strage_state.inner().clone();
+    thread::spawn(move || {
+        println!("[start] ipinfo_update");
+        nustat_core::ipinfo::start_ipinfo_update(&mut netstat_strage_ipinfo);
+    });
 }
 
 pub fn cleanup() {
     println!("Cleanup");
-    match db::cleanup_db() {
-        Ok(_) => {
-            println!("Database cleaned up");
-        }
-        Err(e) => {
-            eprintln!("Error: {:?}", e);
-        }
-    }
 }
