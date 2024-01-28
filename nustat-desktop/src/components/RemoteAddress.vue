@@ -7,7 +7,7 @@ import { WindowUtil } from '../libnp/window-util';
 import { setRoutine } from '../libnp/routine';
 
 const windowUtil = new WindowUtil();
-const autoUpdate = ref(true);
+const autoUpdate = ref(false);
 const tableData = ref<RemoteHostInfo[]>([]);
 const isLoading = ref(false);
 
@@ -76,17 +76,27 @@ onUnmounted(() => {
 
 <template>
     <Card class="flex-auto">
-        <template #title> Detected RemoteAddress. Click row for more detail. </template>
+        <template #title> 
+            <div class="flex justify-content-between">
+                <div class="flex">
+                    Detected Remote Address
+                </div>
+                <div class="flex">
+                    <ToggleButton v-model="autoUpdate" onLabel="Auto" offLabel="Manual" onIcon="pi pi-play" offIcon="pi pi-pause" class="mr-2" />
+                    <Button type="button" icon="pi pi-refresh" outlined :loading="isLoading" @click="GetRemoteHosts" :disabled="autoUpdate" />
+                </div>
+            </div>
+        </template>
         <template #content>
             <DataTable :value="tableData" v-model:selection="selectedHost" :loading="isLoading" :virtualScrollerOptions="{ itemSize: 20 }" selectionMode="single" dataKey="ip_addr" @rowSelect="onRowSelect" @rowUnselect="onRowUnselect" size="small" scrollable :scrollHeight="(windowUtil.windowSize.innerHeight-200).toString() + 'px'" tableStyle="min-width: 30rem">
-                <Column field="ip_addr" header="IP Address" ></Column>
-                <Column field="hostname" header="Host Name" ></Column>
-                <Column field="traffic_info.packet_sent" header="Packet Sent" ></Column>
-                <Column field="traffic_info.packet_received" header="Packet Recv" ></Column>
-                <Column field="traffic_info.bytes_sent" header="Bytes Sent" ></Column>
-                <Column field="traffic_info.bytes_received" header="Bytes Recv" ></Column>
-                <Column field="country_code" header="Country" ></Column>
-                <Column field="asn" header="ASN" ></Column>
+                <Column field="ip_addr" header="IP Address" sortable></Column>
+                <Column field="hostname" header="Host Name" sortable></Column>
+                <Column field="traffic_info.packet_sent" header="Packet Sent" sortable></Column>
+                <Column field="traffic_info.packet_received" header="Packet Recv" sortable></Column>
+                <Column field="traffic_info.bytes_sent" header="Bytes Sent" sortable></Column>
+                <Column field="traffic_info.bytes_received" header="Bytes Recv" sortable></Column>
+                <Column field="country_code" header="Country" sortable></Column>
+                <Column field="asn" header="ASN" sortable></Column>
             </DataTable>
         </template>
     </Card>

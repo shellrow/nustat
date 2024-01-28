@@ -1,32 +1,13 @@
 use std::{collections::HashMap, fs, net::{Ipv4Addr, Ipv6Addr}, path::PathBuf};
-
 use rangemap::RangeInclusiveMap;
 use serde::{Serialize, Deserialize};
 
-use crate::sys;
+use crate::{ipinfo::{Ipv4Info, Ipv6Info}, sys};
 
 pub const IPV4_INFO_BIN_NAME: &str = "ipv4_info.bin";
 pub const IPV6_INFO_BIN_NAME: &str = "ipv6_info.bin";
 pub const COUNTRY_BIN_NAME: &str = "country.bin";
 pub const AS_BIN_NAME: &str = "as.bin";
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Ipv4Info {
-    pub ip_addr: Ipv4Addr,
-    pub country_code: String,
-    pub country_name: String,
-    pub asn: u32,
-    pub as_name: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Ipv6Info {
-    pub ip_addr: Ipv6Addr,
-    pub country_code: String,
-    pub country_name: String,
-    pub asn: u32,
-    pub as_name: String,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DbIpv4Info {

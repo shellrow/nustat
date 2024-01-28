@@ -76,6 +76,54 @@ impl NetStatStrage {
                 }
             },
         };
+        let local_ip_addr: IpAddr = match direction {
+            Direction::Egress => {
+                if let Some(ipv4) = &ip_layer.ipv4 {
+                    IpAddr::V4(ipv4.source)
+                } else if let Some(ipv6) = &ip_layer.ipv6 {
+                    IpAddr::V6(ipv6.source)
+                } else {
+                    return;
+                }
+            },
+            Direction::Ingress => {
+                if let Some(ipv4) = &ip_layer.ipv4 {
+                    IpAddr::V4(ipv4.destination)
+                } else if let Some(ipv6) = &ip_layer.ipv6 {
+                    IpAddr::V6(ipv6.destination)
+                } else {
+                    return;
+                }
+            },
+        };
+        let local_port: u16 = match direction {
+            Direction::Egress => {
+                if let Some(transport) = &frame.transport {
+                    if let Some(tcp) = &transport.tcp {
+                        tcp.source
+                    } else if let Some(udp) = &transport.udp {
+                        udp.source
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            },
+            Direction::Ingress => {
+                if let Some(transport) = &frame.transport {
+                    if let Some(tcp) = &transport.tcp {
+                        tcp.destination
+                    } else if let Some(udp) = &transport.udp {
+                        udp.destination
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            },
+        };
         let remote_ip_addr: IpAddr = match direction {
             Direction::Egress => {
                 if let Some(ipv4) = ip_layer.ipv4 {
@@ -93,6 +141,34 @@ impl NetStatStrage {
                     IpAddr::V6(ipv6.source)
                 } else {
                     return;
+                }
+            },
+        };
+        let remote_port: u16 = match direction {
+            Direction::Egress => {
+                if let Some(transport) = &frame.transport {
+                    if let Some(tcp) = &transport.tcp {
+                        tcp.destination
+                    } else if let Some(udp) = &transport.udp {
+                        udp.destination
+                    } else {
+                        0
+                    }
+                } else {
+                    0
+                }
+            },
+            Direction::Ingress => {
+                if let Some(transport) = &frame.transport {
+                    if let Some(tcp) = &transport.tcp {
+                        tcp.source
+                    } else if let Some(udp) = &transport.udp {
+                        udp.source
+                    } else {
+                        0
+                    }
+                } else {
+                    0
                 }
             },
         };
@@ -129,32 +205,29 @@ impl NetStatStrage {
                 }
                 // Update SocketInfo
                 let socket_connection: SocketConnection = SocketConnection {
-                    local_socket: SocketAddr::new(remote_ip_addr, tcp.source),
-                    remote_socket: SocketAddr::new(remote_ip_addr, tcp.destination),
+                    local_socket: SocketAddr::new(local_ip_addr, local_port),
+                    remote_socket: SocketAddr::new(remote_ip_addr, remote_port),
                     protocol: Protocol::TCP,
                 };
                 let socket_info: &mut SocketConnectionInfo = self.connections.entry(socket_connection).or_insert(SocketConnectionInfo {
                     if_index: frame.if_index,
                     if_name: frame.if_name.clone(),
-                    packet_sent: 0,
-                    packet_received: 0,
-                    bytes_sent: 0,
-                    bytes_received: 0,
+                    traffic_info: TrafficInfo::new(),
                     status: SocketStatus::from_xenet_tcp_flags(tcp.flags),
                     process: None,
                 });
                 match direction {
                     Direction::Egress => {
-                        socket_info.packet_sent += 1;
-                        socket_info.bytes_sent += frame.packet_len;
+                        socket_info.traffic_info.packet_sent += 1;
+                        socket_info.traffic_info.bytes_sent += frame.packet_len;
                     },
                     Direction::Ingress => {
-                        socket_info.packet_received += 1;
-                        socket_info.bytes_received += frame.packet_len;
+                        socket_info.traffic_info.packet_received += 1;
+                        socket_info.traffic_info.bytes_received += frame.packet_len;
                     },
                 }
             }
-            if let Some(udp) = transport.udp {
+            if let Some(_udp) = transport.udp {
                 let udp_traffic_info: &mut TrafficInfo = remote_host.protocol_stat.entry(Protocol::UDP).or_insert(TrafficInfo::new());
                 match direction {
                     Direction::Egress => {
@@ -168,28 +241,25 @@ impl NetStatStrage {
                 }
                 // Update SocketInfo
                 let socket_connection: SocketConnection = SocketConnection {
-                    local_socket: SocketAddr::new(remote_ip_addr, udp.source),
-                    remote_socket: SocketAddr::new(remote_ip_addr, udp.destination),
+                    local_socket: SocketAddr::new(local_ip_addr, local_port),
+                    remote_socket: SocketAddr::new(remote_ip_addr, remote_port),
                     protocol: Protocol::UDP,
                 };
                 let socket_info: &mut SocketConnectionInfo = self.connections.entry(socket_connection).or_insert(SocketConnectionInfo {
                     if_index: frame.if_index,
                     if_name: frame.if_name.clone(),
-                    packet_sent: 0,
-                    packet_received: 0,
-                    bytes_sent: 0,
-                    bytes_received: 0,
+                    traffic_info: TrafficInfo::new(),
                     status: SocketStatus::Unknown,
                     process: None,
                 });
                 match direction {
                     Direction::Egress => {
-                        socket_info.packet_sent += 1;
-                        socket_info.bytes_sent += frame.packet_len;
+                        socket_info.traffic_info.packet_sent += 1;
+                        socket_info.traffic_info.bytes_sent += frame.packet_len;
                     },
                     Direction::Ingress => {
-                        socket_info.packet_received += 1;
-                        socket_info.bytes_received += frame.packet_len;
+                        socket_info.traffic_info.packet_received += 1;
+                        socket_info.traffic_info.bytes_received += frame.packet_len;
                     },
                 }
             }

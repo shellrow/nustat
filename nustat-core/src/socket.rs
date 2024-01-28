@@ -6,6 +6,7 @@ use xenet::packet::tcp::TcpFlags;
 use std::collections::HashMap;
 use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
 use crate::net::stat::NetStatStrage;
+use crate::net::traffic::TrafficInfo;
 use crate::process;
 use crate::process::ProcessInfo;
 use crate::net::protocol::Protocol;
@@ -98,10 +99,7 @@ impl std::fmt::Display for SocketStatus {
 pub struct SocketConnectionInfo {
     pub if_index: u32,
     pub if_name: String,
-    pub packet_sent: usize,
-    pub packet_received: usize,
-    pub bytes_sent: usize,
-    pub bytes_received: usize,
+    pub traffic_info: TrafficInfo,
     pub status: SocketStatus,
     pub process: Option<ProcessInfo>,
 }
@@ -258,10 +256,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) 
                             let socket_conn_info: &mut SocketConnectionInfo = netstat_strage.connections.entry(socket_connection).or_insert(SocketConnectionInfo {
                                 if_index: 0,
                                 if_name: "".to_string(),
-                                packet_sent: 0,
-                                packet_received: 0,
-                                bytes_sent: 0,
-                                bytes_received: 0,
+                                traffic_info: TrafficInfo::new(),
                                 status: SocketStatus::Unknown,
                                 process: None,
                             });

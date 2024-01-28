@@ -23,4 +23,10 @@ impl TrafficInfo {
             bytes_received: 0,
         }
     }
+    pub fn add_traffic(&mut self, traffic: &TrafficInfo) {
+        self.packet_sent += traffic.packet_sent;
+        self.packet_received += traffic.packet_received;
+        self.bytes_sent += traffic.bytes_sent;
+        self.bytes_received += traffic.bytes_received;
+    }
 }

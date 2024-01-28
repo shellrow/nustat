@@ -528,7 +528,7 @@ onUnmounted(() => {
         <template #title>  
             <div class="flex justify-content-between">
                 <div class="flex">
-                    Capturing from eth0.
+                    Packet Capture
                 </div>
                 <div class="flex">
                     <ToggleButton v-model="caputuring" onLabel="Captureing" offLabel="Stop" onIcon="pi pi-play" offIcon="pi pi-pause" class="mr-2" @change="onChengeCapture" />

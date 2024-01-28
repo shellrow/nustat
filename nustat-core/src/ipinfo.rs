@@ -1,13 +1,34 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::{Arc, Mutex};
+use serde::{Serialize, Deserialize};
 
 use crate::db::ip::IpDatabase;
 use crate::net::stat::NetStatStrage;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Ipv4Info {
+    pub ip_addr: Ipv4Addr,
+    pub country_code: String,
+    pub country_name: String,
+    pub asn: u32,
+    pub as_name: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct Ipv6Info {
+    pub ip_addr: Ipv6Addr,
+    pub country_code: String,
+    pub country_name: String,
+    pub asn: u32,
+    pub as_name: String,
+}
+
 // Lookup ip.db and update remote_hosts.
 // Target: country_code, country_name, asn, as_name
 pub fn start_ipinfo_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
+    let start = std::time::Instant::now();
     let ipdb = IpDatabase::load().unwrap();
+    println!("[ipinfo_update] load ipdb: {} ms", start.elapsed().as_millis());
     loop {
         let mut target_ipv4: Vec<Ipv4Addr> = vec![];
         let mut target_ipv6: Vec<Ipv6Addr> = vec![];
