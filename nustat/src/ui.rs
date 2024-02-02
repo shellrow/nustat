@@ -28,61 +28,47 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     };
 }
 
-fn draw_gauges(f: &mut Frame, app: &mut App, area: Rect) {
+fn draw_summary(f: &mut Frame, _app: &mut App, area: Rect) {
     let chunks = Layout::default()
-        .constraints([
-            //Constraint::Length(2),
-            Constraint::Length(5),
-            Constraint::Length(1),
-        ])
-        .margin(1)
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25)])
+        //.margin(1)
         .split(area);
-    let block = Block::default().borders(Borders::ALL).title("Graphs");
-    f.render_widget(block, area);
+    let text1 = vec![
+        text::Line::from("Name: eth0"),
+        text::Line::from("Index: 1"),
+    ];
+    let block1 = Block::default().borders(Borders::ALL).title("Network Interface");
+    let paragraph1 = Paragraph::new(text1).block(block1).wrap(Wrap { trim: true });
+    f.render_widget(paragraph1, chunks[0]);
 
-    /* let label = format!("{:.2}%", app.progress * 100.0);
-    let gauge = Gauge::default()
-        .block(Block::default().title("Gauge:"))
-        .gauge_style(
-            Style::default()
-                .fg(Color::Magenta)
-                .bg(Color::Black)
-                .add_modifier(Modifier::ITALIC | Modifier::BOLD),
-        )
-        .use_unicode(app.enhanced_graphics)
-        .label(label)
-        .ratio(app.progress);
-    f.render_widget(gauge, chunks[0]); */
-    let title = format!("[Bandwidth Sparkline] Current: {:.2}Mbps", 10.00);
-    let sparkline = Sparkline::default()
-        .block(Block::default().title(title))
-        .style(Style::default().fg(Color::Green))
-        .data(&app.sparkline.points)
-        .bar_set(if app.enhanced_graphics {
-            symbols::bar::NINE_LEVELS
-        } else {
-            symbols::bar::THREE_LEVELS
-        });
-    f.render_widget(sparkline, chunks[0]);
+    let text2 = vec![
+        text::Line::from("Count: 1000"),
+        text::Line::from("Bytes: 4000"),
+    ];
+    let block2 = Block::default().borders(Borders::ALL).title("Total Packets");
+    let paragraph2 = Paragraph::new(text2).block(block2).wrap(Wrap { trim: true });
+    f.render_widget(paragraph2, chunks[1]);
 
-    let line_gauge = LineGauge::default()
-        .block(Block::default().title("LineGauge:"))
-        .gauge_style(Style::default().fg(Color::Magenta))
-        .line_set(if app.enhanced_graphics {
-            symbols::line::THICK
-        } else {
-            symbols::line::NORMAL
-        })
-        .ratio(app.progress);
-    f.render_widget(line_gauge, chunks[1]);
+    let text3 = vec![
+        text::Line::from("Count: 1000"),
+        text::Line::from("Bytes: 4000"),
+    ];
+    let block3 = Block::default().borders(Borders::ALL).title("Total Ingress Bytes");
+    let paragraph3 = Paragraph::new(text3).block(block3).wrap(Wrap { trim: true });
+    f.render_widget(paragraph3, chunks[2]);
+
+    let text4 = vec![
+        text::Line::from("Count: 1000"),
+        text::Line::from("Bytes: 4000"),
+    ];
+    let block4 = Block::default().borders(Borders::ALL).title("Total Egress Bytes");
+    let paragraph4 = Paragraph::new(text4).block(block4).wrap(Wrap { trim: true });
+    f.render_widget(paragraph4, chunks[3]);
+
 }
 
-fn draw_charts(f: &mut Frame, app: &mut App, area: Rect) {
-    /* let constraints = if app.show_chart {
-        vec![Constraint::Percentage(50), Constraint::Percentage(50)]
-    } else {
-        vec![Constraint::Percentage(100)]
-    }; */
+fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .constraints(vec![Constraint::Percentage(100)])
         .direction(Direction::Horizontal)
@@ -93,156 +79,103 @@ fn draw_charts(f: &mut Frame, app: &mut App, area: Rect) {
             .split(chunks[0]);
         {
             let chunks = Layout::default()
-                .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
+                .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
                 .direction(Direction::Horizontal)
                 .split(chunks[0]);
 
-            // Draw tasks
-            let tasks: Vec<ListItem> = app
-                .tasks
-                .items
-                .iter()
-                .map(|i| ListItem::new(vec![text::Line::from(Span::raw(*i))]))
-                .collect();
-            let tasks = List::new(tasks)
-                .block(Block::default().borders(Borders::ALL).title("List"))
-                .highlight_style(Style::default().add_modifier(Modifier::BOLD))
-                .highlight_symbol("> ");
-            f.render_stateful_widget(tasks, chunks[0], &mut app.tasks.state);
+            // Draw top Remote Address Table
+            let mut table_state = TableState::default();
+            let rows = [
+                Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
+                Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
+                Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
+                Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
+                ];
+            // Columns widths are constrained in the same way as Layout...
+            let widths = [
+                Constraint::Length(20),
+                Constraint::Length(20),
+                Constraint::Length(10),
+                Constraint::Length(10),
+            ];
 
-            // Draw logs
-            let info_style = Style::default().fg(Color::Blue);
-            let warning_style = Style::default().fg(Color::Yellow);
-            let error_style = Style::default().fg(Color::Magenta);
-            let critical_style = Style::default().fg(Color::Red);
-            let logs: Vec<ListItem> = app
-                .logs
-                .items
-                .iter()
-                .map(|&(evt, level)| {
-                    let s = match level {
-                        "ERROR" => error_style,
-                        "CRITICAL" => critical_style,
-                        "WARNING" => warning_style,
-                        _ => info_style,
-                    };
-                    let content = vec![text::Line::from(vec![
-                        Span::styled(format!("{level:<9}"), s),
-                        Span::raw(evt),
-                    ])];
-                    ListItem::new(content)
-                })
-                .collect();
-            let logs = List::new(logs).block(Block::default().borders(Borders::ALL).title("List"));
-            f.render_stateful_widget(logs, chunks[1], &mut app.logs.state);
+            let table = Table::new(rows, widths)
+            .column_spacing(1)
+            .header(
+                Row::new(vec!["IP Address", "Host Name", "AS Name", "Country"])
+                    .style(Style::new().bold())
+                    //.bottom_margin(1),
+            )
+            .block(Block::default().borders(Borders::ALL).title("Table"))
+            .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+            .highlight_symbol(">>");
+            
+            //f.render_widget(table, chunks[0]);
+            f.render_stateful_widget(table, chunks[0], &mut table_state);
+            //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state);
+
+            // Draw top Protocols Table
+            let rows = [
+                Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
+                Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
+                Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
+                Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
+                ];
+            // Columns widths are constrained in the same way as Layout...
+            let widths = [
+                Constraint::Length(12),
+                Constraint::Length(8),
+                Constraint::Length(8),
+                Constraint::Length(8),
+            ];
+
+            let mut table_state = TableState::default();
+            let table = Table::new(rows, widths)
+            .column_spacing(1)
+            .header(
+                Row::new(vec!["Service Name", "Port", "↓ Bytes", "↑ Bytes"])
+                    .style(Style::new().bold())
+                    //.bottom_margin(1),
+            )
+            .block(Block::default().borders(Borders::ALL).title("Table"))
+            .highlight_style(Style::new().reversed())
+            .highlight_symbol(">>");
+            
+            f.render_stateful_widget(table, chunks[1], &mut table_state);
+            //f.render_stateful_widget(protocols, chunks[1], &mut app.top_protocols.state);
         }
-        /* let barchart = BarChart::default()
-            .block(Block::default().borders(Borders::ALL).title("Bar chart"))
-            .data(&app.barchart)
-            .bar_width(3)
-            .bar_gap(2)
-            .bar_set(if app.enhanced_graphics {
-                symbols::bar::NINE_LEVELS
-            } else {
-                symbols::bar::THREE_LEVELS
-            })
-            .value_style(
-                Style::default()
-                    .fg(Color::Black)
-                    .bg(Color::Green)
-                    .add_modifier(Modifier::ITALIC),
-            )
-            .label_style(Style::default().fg(Color::Yellow))
-            .bar_style(Style::default().fg(Color::Green)); 
-        f.render_widget(barchart, chunks[1]);*/
-        // Draw logs
-        let info_style = Style::default().fg(Color::Blue);
-        let warning_style = Style::default().fg(Color::Yellow);
-        let error_style = Style::default().fg(Color::Magenta);
-        let critical_style = Style::default().fg(Color::Red);
-        let logs: Vec<ListItem> = app
-            .logs
-            .items
-            .iter()
-            .map(|&(evt, level)| {
-                let s = match level {
-                    "ERROR" => error_style,
-                    "CRITICAL" => critical_style,
-                    "WARNING" => warning_style,
-                    _ => info_style,
-                };
-                let content = vec![text::Line::from(vec![
-                    Span::styled(format!("{level:<9}"), s),
-                    Span::raw(evt),
-                ])];
-                ListItem::new(content)
-            })
-            .collect();
-        let logs = List::new(logs).block(Block::default().borders(Borders::ALL).title("List"));
-        f.render_stateful_widget(logs, chunks[1], &mut app.logs.state);
+
+        // Draw top Remote Address Table
+        let rows = [
+            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
+            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
+            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
+            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
+            ];
+        // Columns widths are constrained in the same way as Layout...
+        let widths = [
+            Constraint::Length(10),
+            Constraint::Length(20),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ];
+
+        let mut table_state = TableState::default();
+        let table = Table::new(rows, widths)
+        .column_spacing(1)
+        //.style(Style::new().blue())
+        .header(
+            Row::new(vec!["Process ID", "Process Name", "Bytes Sent", "Bytes Reveived"])
+                .style(Style::new().bold())
+                //.bottom_margin(1),
+        )
+        .block(Block::default().borders(Borders::ALL).title("Table"))
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>");
+        
+        f.render_stateful_widget(table, chunks[1], &mut table_state);
+        //f.render_stateful_widget(processes, chunks[1], &mut app.top_processes.state);
     }
-    /* if app.show_chart {
-        let x_labels = vec![
-            Span::styled(
-                format!("{}", app.signals.window[0]),
-                Style::default().add_modifier(Modifier::BOLD),
-            ),
-            Span::raw(format!(
-                "{}",
-                (app.signals.window[0] + app.signals.window[1]) / 2.0
-            )),
-            Span::styled(
-                format!("{}", app.signals.window[1]),
-                Style::default().add_modifier(Modifier::BOLD),
-            ),
-        ];
-        let datasets = vec![
-            Dataset::default()
-                .name("data2")
-                .marker(symbols::Marker::Dot)
-                .style(Style::default().fg(Color::Cyan))
-                .data(&app.signals.sin1.points),
-            Dataset::default()
-                .name("data3")
-                .marker(if app.enhanced_graphics {
-                    symbols::Marker::Braille
-                } else {
-                    symbols::Marker::Dot
-                })
-                .style(Style::default().fg(Color::Yellow))
-                .data(&app.signals.sin2.points),
-        ];
-        let chart = Chart::new(datasets)
-            .block(
-                Block::default()
-                    .title(Span::styled(
-                        "Chart",
-                        Style::default()
-                            .fg(Color::Cyan)
-                            .add_modifier(Modifier::BOLD),
-                    ))
-                    .borders(Borders::ALL),
-            )
-            .x_axis(
-                Axis::default()
-                    .title("X Axis")
-                    .style(Style::default().fg(Color::Gray))
-                    .bounds(app.signals.window)
-                    .labels(x_labels),
-            )
-            .y_axis(
-                Axis::default()
-                    .title("Y Axis")
-                    .style(Style::default().fg(Color::Gray))
-                    .bounds([-20.0, 20.0])
-                    .labels(vec![
-                        Span::styled("-20", Style::default().add_modifier(Modifier::BOLD)),
-                        Span::raw("0"),
-                        Span::styled("20", Style::default().add_modifier(Modifier::BOLD)),
-                    ]),
-            );
-        f.render_widget(chart, chunks[1]);
-    } */
 }
 
 fn draw_text(f: &mut Frame, area: Rect) {
@@ -286,7 +219,6 @@ fn draw_text(f: &mut Frame, area: Rect) {
 fn draw_color_table(f: &mut Frame, area: Rect) {
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        //.constraints([Constraint::Ratio(1, 2), Constraint::Ratio(1, 2)])
         .constraints(vec![Constraint::Percentage(100)])
         .split(area);
     let colors = [
@@ -334,14 +266,12 @@ fn draw_color_table(f: &mut Frame, area: Rect) {
 fn draw_first_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .constraints([
-            Constraint::Length(9),
+            Constraint::Length(4),
             Constraint::Min(8),
-            Constraint::Length(7),
         ])
         .split(area);
-    draw_gauges(f, app, chunks[0]);
-    draw_charts(f, app, chunks[1]);
-    draw_text(f, chunks[2]);
+    draw_summary(f, app, chunks[0]);
+    draw_top_data(f, app, chunks[1]);
 }
 
 fn draw_second_tab(f: &mut Frame, _app: &mut App, area: Rect) {
