@@ -68,3 +68,10 @@ pub fn get_process_map() -> HashMap<u32, ProcessInfo> {
     }
     process_map
 }
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct ProcessDisplayInfo {
+    pub pid: u32,
+    pub name: String,
+    pub traffic: TrafficInfo,
+}

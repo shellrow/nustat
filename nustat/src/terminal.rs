@@ -10,10 +10,11 @@ use crossterm::{
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use ratatui::prelude::*;
-
+use std::sync::{Arc, Mutex};
+use nustat_core::net::stat::{NetStatStrage, NetStatData};
 use crate::{app::App, ui};
 
-pub fn run(tick_rate: Duration, enhanced_graphics: bool) -> Result<(), Box<dyn Error>> {
+pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Arc<Mutex<NetStatStrage>>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -23,7 +24,7 @@ pub fn run(tick_rate: Duration, enhanced_graphics: bool) -> Result<(), Box<dyn E
 
     // create app and run it
     let app = App::new("nustat", enhanced_graphics);
-    let res = run_app(&mut terminal, app, tick_rate);
+    let res = run_app(&mut terminal, app, tick_rate, netstat_strage);
 
     // restore terminal
     disable_raw_mode()?;
@@ -45,9 +46,33 @@ fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
     tick_rate: Duration,
+    netstat_strage: &mut Arc<Mutex<NetStatStrage>>
 ) -> io::Result<()> {
     let mut last_tick = Instant::now();
+    let mut data_last_tick = Instant::now();
     loop {
+
+        if data_last_tick.elapsed() >= Duration::from_millis(1000) {
+            let diff_clone: Option<NetStatData> = {
+                match netstat_strage.try_lock() {
+                    Ok(mut netstat_strage) => {
+                        let diff_clone: NetStatData = netstat_strage.clone_data_and_reset();
+                        Some(diff_clone)
+                    }
+                    Err(_e) => {
+                        //eprintln!("[run_app] lock error: {}", e);
+                        None
+                    }
+                }
+            };
+            if let Some(diff) = diff_clone {
+                app.netstat_data.merge(diff);
+                app.top_remote_hosts = app.netstat_data.get_top_remote_hosts();
+                app.top_processes = app.netstat_data.get_top_processes();
+            }
+            data_last_tick = Instant::now();
+        }
+
         terminal.draw(|f| ui::draw(f, &mut app))?;
 
         let timeout = tick_rate.saturating_sub(last_tick.elapsed());

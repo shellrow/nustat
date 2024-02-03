@@ -35,9 +35,7 @@ pub struct Ipv6Info {
 // Lookup ip.db and update remote_hosts.
 // Target: country_code, country_name, asn, as_name
 pub fn start_ipinfo_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
-    let start = std::time::Instant::now();
     let ipdb = IpDatabase::load().unwrap();
-    println!("[ipinfo_update] load ipdb: {} ms", start.elapsed().as_millis());
     loop {
         let mut target_ipv4: Vec<Ipv4Addr> = vec![];
         let mut target_ipv6: Vec<Ipv6Addr> = vec![];
@@ -61,8 +59,6 @@ pub fn start_ipinfo_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
                 println!("[ipinfo_update] lock error: {}", e);
             }
         }
-        println!("[ipinfo_update] target ipv4 addresses: {}", target_ipv4.len());
-        println!("[ipinfo_update] target ipv6 addresses: {}", target_ipv6.len());
         match netstat_strage.try_lock() {
             Ok(mut netstat_strage) => {
                 for ipv4 in target_ipv4 {
@@ -90,6 +86,6 @@ pub fn start_ipinfo_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
                 println!("[ipinfo_update] lock error: {}", e);
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(8));
+        std::thread::sleep(std::time::Duration::from_secs(4));
     }
 }

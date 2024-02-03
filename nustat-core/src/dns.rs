@@ -293,20 +293,23 @@ pub fn lookup_addr(addr: IpAddr) -> Vec<String> {
 pub fn start_dns_map_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
     loop {
         let mut lookup_target_ips: Vec<IpAddr> = vec![];
+        let mut updated :bool = false;
         match netstat_strage.try_lock() {
             Ok(netstat_strage) => {
-                println!("[dns_map_update] Total remotehost: {}", netstat_strage.remote_hosts.keys().len());
                 netstat_strage.remote_hosts.keys().for_each(|ip_addr| {
                     if !netstat_strage.reverse_dns_map.contains_key(ip_addr) {
                         lookup_target_ips.push(*ip_addr);
                     }
                 });
+                updated = true;
             }
-            Err(e) => {
-                println!("[dns_map_update] lock error: {}", e);
+            Err(_e) => {
+                //eprintln!("[dns_map_update] lock error: {}", e);
             }
         }
-        let dns_map = crate::dns::lookup_ips(lookup_target_ips);
+        let mut resolver = DnsResolver::new();
+        let dns_map = resolver.lookup_ips(lookup_target_ips);
+        //let dns_map = crate::dns::lookup_ips(lookup_target_ips);
         match netstat_strage.try_lock() {
             Ok(mut netstat_strage) => {
                 for (ip_addr, hostname) in dns_map {
@@ -316,10 +319,29 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
                     netstat_strage.reverse_dns_map.insert(ip_addr, hostname);
                 }
             }
-            Err(e) => {
-                println!("[dns_map_update] lock error: {}", e);
+            Err(_e) => {
+                //eprintln!("[dns_map_update] lock error: {}", e);
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(12));
+        if updated {
+            std::thread::sleep(std::time::Duration::from_secs(8));
+        }
+    }
+}
+
+pub struct DnsResolver {
+    //pub dns_map: HashMap<IpAddr, String>,
+}
+
+impl DnsResolver {
+    pub fn new() -> Self {
+        DnsResolver {
+            //dns_map: HashMap::new(),
+        }
+    }
+    pub fn lookup_ips(&mut self, ips: Vec<IpAddr>) -> HashMap<IpAddr, String> {
+        let rt: tokio::runtime::Runtime = tokio::runtime::Runtime::new().unwrap();
+        let handle = thread::spawn(move || rt.block_on(async { lookup_ips_async(ips).await }));
+        handle.join().unwrap()
     }
 }

@@ -97,11 +97,24 @@ impl std::fmt::Display for SocketStatus {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketConnectionInfo {
-    pub if_index: u32,
-    pub if_name: String,
     pub traffic_info: TrafficInfo,
     pub status: SocketStatus,
     pub process: Option<ProcessInfo>,
+}
+
+impl SocketConnectionInfo {
+    pub fn new() -> Self {
+        SocketConnectionInfo {
+            traffic_info: TrafficInfo::new(),
+            status: SocketStatus::Unknown,
+            process: None,
+        }
+    }
+    pub fn merge(&mut self, other: &SocketConnectionInfo) {
+        self.traffic_info.add_traffic(&other.traffic_info);
+        self.status = other.status;
+        self.process = other.process.clone();
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -265,6 +278,7 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
 pub fn start_socket_info_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
     loop {
         let sockets_info = get_sockets_info(SocketInfoOption::default());
+        let mut updated: bool = false;
         match netstat_strage.try_lock() {
             Ok(mut netstat_strage) => {
                 // remove old connections
@@ -288,8 +302,6 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) 
                                 protocol: Protocol::TCP,
                             };
                             let socket_conn_info: &mut SocketConnectionInfo = netstat_strage.connections.entry(socket_connection).or_insert(SocketConnectionInfo {
-                                if_index: 0,
-                                if_name: "".to_string(),
                                 traffic_info: TrafficInfo::new(),
                                 status: SocketStatus::Unknown,
                                 process: None,
@@ -312,12 +324,14 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) 
                         _ => {},
                     }
                 }
-                println!("[socket_info_update] total connections: {}", netstat_strage.connections.keys().len());
+                updated = true;
             }
-            Err(e) => {
-                println!("socket_info_update lock error{}", e);
+            Err(_e) => {
+                //eprintln!("socket_info_update lock error{}", e);
             }
         }
-        std::thread::sleep(std::time::Duration::from_secs(4));
+        if updated {
+            std::thread::sleep(std::time::Duration::from_secs(10));
+        }
     }
 }

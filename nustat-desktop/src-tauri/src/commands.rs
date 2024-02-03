@@ -134,7 +134,6 @@ pub fn get_process_info(netstat: State<'_, Arc<Mutex<NetStatStrage>>>) -> Vec<Pr
 
 #[tauri::command]
 pub fn get_overview(netstat: State<'_, Arc<Mutex<NetStatStrage>>>) -> Overview {
-    let start = std::time::Instant::now();
     let mut overview = Overview::new();
     match default_net::get_default_interface() {
         Ok(default_if) => {
@@ -287,6 +286,5 @@ pub fn get_overview(netstat: State<'_, Arc<Mutex<NetStatStrage>>>) -> Overview {
             println!("get_overview lock error: {:?}", e);
         }
     }
-    println!("get_overview: {:?}", start.elapsed());
     overview
 }

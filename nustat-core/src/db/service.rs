@@ -5,6 +5,7 @@ use serde::{Serialize, Deserialize};
 use crate::sys;
 
 pub const TCP_SERVICE_BIN_NAME: &str = "tcp-service.bin";
+pub const TCP_SERVICE_BIN: &[u8] = include_bytes!("../../../resources/tcp-service.bin");
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct TcpService {
@@ -24,29 +25,50 @@ impl TcpService {
     }
 }
 
+pub fn get_bundled_tcp_service() -> HashMap<u16, String> {
+    let mut tcp_map: HashMap<u16, String> = HashMap::new();
+    let tcp_services: Vec<TcpService> = bincode::deserialize(TCP_SERVICE_BIN).unwrap_or(vec![]);
+    for port_info in tcp_services {
+        tcp_map.insert(port_info.port, port_info.service_name);
+    }
+    tcp_map
+}
+
+fn get_tcp_service() -> Result<HashMap<u16, String>, Box<dyn std::error::Error>> {
+    let file_path: PathBuf = TcpService::bin_file_path().unwrap();
+    let f  = fs::read(file_path).unwrap();
+    let tcp_services: Vec<TcpService> = bincode::deserialize(&f).unwrap();
+    let mut tcp_map: HashMap<u16, String> = HashMap::new();
+    for port_info in tcp_services {
+        tcp_map.insert(port_info.port, port_info.service_name);
+    }
+    Ok(tcp_map)
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ServiceDatabase {
     pub tcp_map: HashMap<u16, String>,
 }
 
 impl ServiceDatabase {
+    /// Create a new ServiceDatabase with bundled tcp services.
     pub fn new() -> Self {
         ServiceDatabase {
-            tcp_map: HashMap::new(),
+            tcp_map: get_bundled_tcp_service(),
         }
     }
+    /// Load ServiceDatabase from the file system (user's config directory).
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
-        let mut service_db = ServiceDatabase::new();
-        service_db.load_tcp_service()?;
-        Ok(service_db)
-    }
-    pub fn load_tcp_service(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let file_path: PathBuf = TcpService::bin_file_path().unwrap();
-        let f  = fs::read(file_path).unwrap();
-        let tcp_services: Vec<TcpService> = bincode::deserialize(&f).unwrap();
-        for tcp_service in tcp_services {
-            self.tcp_map.insert(tcp_service.port, tcp_service.service_name);
+        match get_tcp_service() {
+            Ok(tcp_map) => {
+                Ok(ServiceDatabase {
+                    tcp_map,
+                })
+            }
+            Err(e) => {
+                println!("Error: {:?}", e);
+                Err(e)
+            }
         }
-        Ok(())
     }
 }

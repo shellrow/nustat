@@ -28,47 +28,42 @@ pub fn draw(f: &mut Frame, app: &mut App) {
     };
 }
 
-fn draw_summary(f: &mut Frame, _app: &mut App, area: Rect) {
+fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
+    // Draw network interface
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints([Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25), Constraint::Percentage(25)])
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(25), Constraint::Percentage(25)])
         //.margin(1)
         .split(area);
     let text1 = vec![
-        text::Line::from("Name: eth0"),
-        text::Line::from("Index: 1"),
+        text::Line::from(format!("Name: {}", app.netstat_data.if_name)),
+        text::Line::from(format!("Index: {}", app.netstat_data.if_index)),
     ];
     let block1 = Block::default().borders(Borders::ALL).title("Network Interface");
     let paragraph1 = Paragraph::new(text1).block(block1).wrap(Wrap { trim: true });
     f.render_widget(paragraph1, chunks[0]);
 
+    // Draw total ingress
     let text2 = vec![
-        text::Line::from("Count: 1000"),
-        text::Line::from("Bytes: 4000"),
+        text::Line::from(format!("Packets: {}", app.netstat_data.traffic.packet_received)),
+        text::Line::from(format!("Bytes: {}", app.netstat_data.traffic.bytes_received)),
     ];
-    let block2 = Block::default().borders(Borders::ALL).title("Total Packets");
+    let block2 = Block::default().borders(Borders::ALL).title("Total Ingress");
     let paragraph2 = Paragraph::new(text2).block(block2).wrap(Wrap { trim: true });
     f.render_widget(paragraph2, chunks[1]);
 
+    // Draw total egress
     let text3 = vec![
-        text::Line::from("Count: 1000"),
-        text::Line::from("Bytes: 4000"),
+        text::Line::from(format!("Packets: {}", app.netstat_data.traffic.packet_sent)),
+        text::Line::from(format!("Bytes: {}", app.netstat_data.traffic.bytes_sent)),
     ];
-    let block3 = Block::default().borders(Borders::ALL).title("Total Ingress Bytes");
+    let block3 = Block::default().borders(Borders::ALL).title("Total Egress");
     let paragraph3 = Paragraph::new(text3).block(block3).wrap(Wrap { trim: true });
     f.render_widget(paragraph3, chunks[2]);
 
-    let text4 = vec![
-        text::Line::from("Count: 1000"),
-        text::Line::from("Bytes: 4000"),
-    ];
-    let block4 = Block::default().borders(Borders::ALL).title("Total Egress Bytes");
-    let paragraph4 = Paragraph::new(text4).block(block4).wrap(Wrap { trim: true });
-    f.render_widget(paragraph4, chunks[3]);
-
 }
 
-fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
+fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
     let area_chunks = Layout::default()
         .constraints(vec![Constraint::Percentage(100)])
         .direction(Direction::Horizontal)
@@ -78,18 +73,24 @@ fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
             .split(area_chunks[0]);
 
-        // Draw top Remote Address Table
-        let rows = [
-            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4", "Cell1-5"]),
-            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4", "Cell1-5"]),
-            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4", "Cell1-5"]),
-            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4", "Cell1-5"]),
-            ];
-        // Columns widths are constrained in the same way as Layout...
+        // Draw top Remote Address Table        
+        let rows = app.top_remote_hosts.iter().map(|host| {
+            Row::new(vec![
+                host.ip_addr.to_string(),
+                host.host_name.clone(),
+                host.asn.to_string(),
+                host.as_name.clone(),
+                host.country_code.clone(),
+                host.traffic.bytes_received.to_string(),
+                host.traffic.bytes_sent.to_string(),
+            ])
+        }).collect::<Vec<Row>>();
         let widths = [
             Constraint::Length(20),
+            Constraint::Length(30),
+            Constraint::Length(8),
             Constraint::Length(20),
-            Constraint::Length(10),
+            Constraint::Length(8),
             Constraint::Length(10),
             Constraint::Length(10),
         ];
@@ -99,7 +100,7 @@ fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
         .column_spacing(1)
         //.style(Style::new().blue())
         .header(
-            Row::new(vec!["IP Address", "Host Name", "ASN", "AS Name", "Country"])
+            Row::new(vec!["IP Address", "Host Name", "ASN", "AS Name", "Country","↓ Bytes", "↑ Bytes"])
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )
@@ -110,23 +111,26 @@ fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
         f.render_stateful_widget(table, inner_chunks[0], &mut table_state);
         //f.render_stateful_widget(processes, chunks[0], &mut app.top_processes.state);
 
-        let chunks = Layout::default()
-            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-            .direction(Direction::Horizontal)
-            .split(inner_chunks[1]);
-
         // Draw top Network-Active Processes Table
         let mut table_state = TableState::default();
-        let rows = [
+        /* let rows = [
             Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
             Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
             Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
             Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
-            ];
+            ]; */
+        let rows = app.top_processes.iter().map(|process| {
+            Row::new(vec![
+                process.pid.to_string(),
+                process.name.clone(),
+                process.traffic.bytes_received.to_string(),
+                process.traffic.bytes_sent.to_string(),
+            ])
+        }).collect::<Vec<Row>>();
         // Columns widths are constrained in the same way as Layout...
         let widths = [
             Constraint::Length(10),
-            Constraint::Length(20),
+            Constraint::Length(40),
             Constraint::Length(10),
             Constraint::Length(10),
         ];
@@ -143,38 +147,8 @@ fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
         .highlight_symbol(">>");
         
         //f.render_widget(table, chunks[0]);
-        f.render_stateful_widget(table, chunks[0], &mut table_state);
+        f.render_stateful_widget(table, inner_chunks[1], &mut table_state);
         //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state);
-
-        // Draw top Protocols Table
-        let rows = [
-            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
-            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
-            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
-            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
-            ];
-        // Columns widths are constrained in the same way as Layout...
-        let widths = [
-            Constraint::Length(12),
-            Constraint::Length(8),
-            Constraint::Length(8),
-            Constraint::Length(8),
-        ];
-
-        let mut table_state = TableState::default();
-        let table = Table::new(rows, widths)
-        .column_spacing(1)
-        .header(
-            Row::new(vec!["Service Name", "Port", "↓ Bytes", "↑ Bytes"])
-                .style(Style::new().bold())
-                //.bottom_margin(1),
-        )
-        .block(Block::default().borders(Borders::ALL).title("Top Protocols"))
-        .highlight_style(Style::new().reversed())
-        .highlight_symbol(">>");
-        
-        f.render_stateful_widget(table, chunks[1], &mut table_state);
-        //f.render_stateful_widget(protocols, chunks[1], &mut app.top_protocols.state);
     }
 }
 
