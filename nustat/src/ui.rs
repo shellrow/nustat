@@ -69,83 +69,54 @@ fn draw_summary(f: &mut Frame, _app: &mut App, area: Rect) {
 }
 
 fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
-    let chunks = Layout::default()
+    let area_chunks = Layout::default()
         .constraints(vec![Constraint::Percentage(100)])
         .direction(Direction::Horizontal)
         .split(area);
     {
-        let chunks = Layout::default()
+        let inner_chunks = Layout::default()
             .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
-            .split(chunks[0]);
-        {
-            let chunks = Layout::default()
-                .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
-                .direction(Direction::Horizontal)
-                .split(chunks[0]);
-
-            // Draw top Remote Address Table
-            let mut table_state = TableState::default();
-            let rows = [
-                Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
-                Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
-                Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
-                Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
-                ];
-            // Columns widths are constrained in the same way as Layout...
-            let widths = [
-                Constraint::Length(20),
-                Constraint::Length(20),
-                Constraint::Length(10),
-                Constraint::Length(10),
-            ];
-
-            let table = Table::new(rows, widths)
-            .column_spacing(1)
-            .header(
-                Row::new(vec!["IP Address", "Host Name", "AS Name", "Country"])
-                    .style(Style::new().bold())
-                    //.bottom_margin(1),
-            )
-            .block(Block::default().borders(Borders::ALL).title("Table"))
-            .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-            .highlight_symbol(">>");
-            
-            //f.render_widget(table, chunks[0]);
-            f.render_stateful_widget(table, chunks[0], &mut table_state);
-            //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state);
-
-            // Draw top Protocols Table
-            let rows = [
-                Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
-                Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
-                Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
-                Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
-                ];
-            // Columns widths are constrained in the same way as Layout...
-            let widths = [
-                Constraint::Length(12),
-                Constraint::Length(8),
-                Constraint::Length(8),
-                Constraint::Length(8),
-            ];
-
-            let mut table_state = TableState::default();
-            let table = Table::new(rows, widths)
-            .column_spacing(1)
-            .header(
-                Row::new(vec!["Service Name", "Port", "↓ Bytes", "↑ Bytes"])
-                    .style(Style::new().bold())
-                    //.bottom_margin(1),
-            )
-            .block(Block::default().borders(Borders::ALL).title("Table"))
-            .highlight_style(Style::new().reversed())
-            .highlight_symbol(">>");
-            
-            f.render_stateful_widget(table, chunks[1], &mut table_state);
-            //f.render_stateful_widget(protocols, chunks[1], &mut app.top_protocols.state);
-        }
+            .split(area_chunks[0]);
 
         // Draw top Remote Address Table
+        let rows = [
+            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4", "Cell1-5"]),
+            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4", "Cell1-5"]),
+            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4", "Cell1-5"]),
+            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4", "Cell1-5"]),
+            ];
+        // Columns widths are constrained in the same way as Layout...
+        let widths = [
+            Constraint::Length(20),
+            Constraint::Length(20),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ];
+
+        let mut table_state = TableState::default();
+        let table = Table::new(rows, widths)
+        .column_spacing(1)
+        //.style(Style::new().blue())
+        .header(
+            Row::new(vec!["IP Address", "Host Name", "ASN", "AS Name", "Country"])
+                .style(Style::new().bold())
+                //.bottom_margin(1),
+        )
+        .block(Block::default().borders(Borders::ALL).title("Top Remote Address"))
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>");
+        
+        f.render_stateful_widget(table, inner_chunks[0], &mut table_state);
+        //f.render_stateful_widget(processes, chunks[0], &mut app.top_processes.state);
+
+        let chunks = Layout::default()
+            .constraints([Constraint::Percentage(60), Constraint::Percentage(40)])
+            .direction(Direction::Horizontal)
+            .split(inner_chunks[1]);
+
+        // Draw top Network-Active Processes Table
+        let mut table_state = TableState::default();
         let rows = [
             Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
             Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
@@ -160,21 +131,50 @@ fn draw_top_data(f: &mut Frame, _app: &mut App, area: Rect) {
             Constraint::Length(10),
         ];
 
-        let mut table_state = TableState::default();
         let table = Table::new(rows, widths)
         .column_spacing(1)
-        //.style(Style::new().blue())
         .header(
-            Row::new(vec!["Process ID", "Process Name", "Bytes Sent", "Bytes Reveived"])
+            Row::new(vec!["Process ID", "Process Name", "↓ Bytes", "↑ Bytes"])
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )
-        .block(Block::default().borders(Borders::ALL).title("Table"))
+        .block(Block::default().borders(Borders::ALL).title("Top Network-Active Processes"))
+        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_symbol(">>");
+        
+        //f.render_widget(table, chunks[0]);
+        f.render_stateful_widget(table, chunks[0], &mut table_state);
+        //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state);
+
+        // Draw top Protocols Table
+        let rows = [
+            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
+            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
+            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
+            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
+            ];
+        // Columns widths are constrained in the same way as Layout...
+        let widths = [
+            Constraint::Length(12),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(8),
+        ];
+
+        let mut table_state = TableState::default();
+        let table = Table::new(rows, widths)
+        .column_spacing(1)
+        .header(
+            Row::new(vec!["Service Name", "Port", "↓ Bytes", "↑ Bytes"])
+                .style(Style::new().bold())
+                //.bottom_margin(1),
+        )
+        .block(Block::default().borders(Borders::ALL).title("Top Protocols"))
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
         
         f.render_stateful_widget(table, chunks[1], &mut table_state);
-        //f.render_stateful_widget(processes, chunks[1], &mut app.top_processes.state);
+        //f.render_stateful_widget(protocols, chunks[1], &mut app.top_protocols.state);
     }
 }
 
