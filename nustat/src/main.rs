@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
     let mut netstat_strage_socket = Arc::clone(&netstat_strage);
-    let mut netstat_strage_dns = Arc::clone(&netstat_strage);
+    //let mut netstat_strage_dns = Arc::clone(&netstat_strage);
     let mut netstat_strage_ui = Arc::clone(&netstat_strage);
 
     let pcap_handler = thread::spawn(move || {
@@ -49,13 +49,13 @@ fn main() -> Result<(), Box<dyn Error>> {
         nustat_core::socket::start_socket_info_update(&mut netstat_strage_socket);
     });
 
-    let dns_handler = thread::spawn(move || {
+    /* let dns_handler = thread::spawn(move || {
         nustat_core::dns::start_dns_map_update(&mut netstat_strage_dns);
-    });
+    }); */
 
     threads.push(pcap_handler);
     threads.push(socket_handler);
-    threads.push(dns_handler);
+    //threads.push(dns_handler);
     /* let ui_handler = thread::spawn(move || {
         let _ = crate::terminal::run(tick_rate, cli.enhanced_graphics, &mut netstat_strage_ui);
     });

@@ -77,7 +77,6 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         let rows = app.top_remote_hosts.iter().map(|host| {
             Row::new(vec![
                 host.ip_addr.to_string(),
-                host.host_name.clone(),
                 host.asn.to_string(),
                 host.as_name.clone(),
                 host.country_code.clone(),
@@ -86,10 +85,9 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             ])
         }).collect::<Vec<Row>>();
         let widths = [
-            Constraint::Length(20),
-            Constraint::Length(30),
+            Constraint::Length(40),
             Constraint::Length(8),
-            Constraint::Length(20),
+            Constraint::Length(24),
             Constraint::Length(8),
             Constraint::Length(10),
             Constraint::Length(10),
@@ -100,7 +98,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         .column_spacing(1)
         //.style(Style::new().blue())
         .header(
-            Row::new(vec!["IP Address", "Host Name", "ASN", "AS Name", "Country","↓ Bytes", "↑ Bytes"])
+            Row::new(vec!["IP Address", "ASN", "AS Name", "Country","↓ Bytes", "↑ Bytes"])
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )

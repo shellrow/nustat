@@ -8,7 +8,6 @@ use crate::net::stat::NetStatStrage;
 use crate::net::traffic::TrafficInfo;
 use crate::process;
 use crate::process::ProcessInfo;
-use crate::net::protocol::Protocol;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
 pub struct SocketConnection {
@@ -119,7 +118,7 @@ pub struct SocketInfo {
     pub local_port: u16,
     pub remote_ip_addr: Option<IpAddr>,
     pub remote_port: Option<u16>,
-    pub protocol: Protocol,
+    pub protocol: TransportProtocol,
     pub status: SocketStatus,
     pub ip_version: AddressFamily,
     pub process: Option<ProcessInfo>,
@@ -152,15 +151,15 @@ pub struct ProtocolSocketAddress {
     pub protocol: TransportProtocol,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
-pub struct PortInfo {
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
+pub struct ProtocolPort {
     pub port: u16,
     pub protocol: TransportProtocol,
 }
 
-impl PortInfo {
+impl ProtocolPort {
     pub fn new(port: u16, protocol: TransportProtocol) -> Self {
-        PortInfo {
+        ProtocolPort {
             port: port,
             protocol: protocol,
         }
@@ -239,12 +238,15 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     for si in sockets {
         match si.protocol_socket_info {
             ProtocolSocketInfo::Tcp(tcp_si) => {
+                if tcp_si.local_port == 0 {
+                    continue;
+                }
                 let socket_info = SocketInfo {
                     local_ip_addr: tcp_si.local_addr,
                     local_port: tcp_si.local_port,
                     remote_ip_addr: Some(tcp_si.remote_addr),
                     remote_port: Some(tcp_si.remote_port),
-                    protocol: Protocol::TCP,
+                    protocol: TransportProtocol::TCP,
                     status: SocketStatus::from_netstat2_state(tcp_si.state),
                     ip_version: if tcp_si.local_addr.is_ipv4() {AddressFamily::IPv4} else {AddressFamily::IPv6},
                     process: if let Some(pid) = si.associated_pids.first() {
@@ -256,12 +258,15 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
                 sockets_info.push(socket_info);
             },
             ProtocolSocketInfo::Udp(udp_si) => {
+                if udp_si.local_port == 0 {
+                    continue;
+                }
                 let socket_info = SocketInfo {
                     local_ip_addr: udp_si.local_addr,
                     local_port: udp_si.local_port,
                     remote_ip_addr: None,
                     remote_port: None,
-                    protocol: Protocol::UDP,
+                    protocol: TransportProtocol::UDP,
                     status: SocketStatus::Unknown,
                     ip_version: if udp_si.local_addr.is_ipv4() {AddressFamily::IPv4} else {AddressFamily::IPv6},
                     process: if let Some(pid) = si.associated_pids.first() {
@@ -303,7 +308,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
         // update connections
         for socket_info in sockets_info {
             match socket_info.protocol {
-                Protocol::TCP => {
+                TransportProtocol::TCP => {
                     let remote_ip_addr: IpAddr = if let Some(ip) = socket_info.remote_ip_addr { ip } else { IpAddr::V4(Ipv4Addr::UNSPECIFIED) };
                     let socket_connection: SocketConnection = SocketConnection {
                         local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
@@ -317,7 +322,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
                     socket_conn_info.status = socket_info.status;
                     socket_conn_info.process = socket_info.process;
                 }
-                Protocol::UDP => {
+                TransportProtocol::UDP => {
                     let socket_connection: SocketConnection = SocketConnection {
                         local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
                         remote_socket: if socket_info.remote_ip_addr.is_some() {
@@ -338,7 +343,6 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
                     socket_conn_info.status = socket_info.status;
                     socket_conn_info.process = socket_info.process;
                 }
-                _ => {},
             }
         }
         // Drop the lock
