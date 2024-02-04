@@ -899,10 +899,7 @@ impl NetStatData {
                                     Some(local_port_traffic) => {
                                         process_traffic_map.insert(proc.pid, local_port_traffic.bytes_sent + local_port_traffic.bytes_received);
                                     }
-                                    None => {
-                                        process_traffic_map.insert(proc.pid, 0);
-                                        //println!("No traffic for process: {:?} {:?}", proc.pid, protocol_port);
-                                    }
+                                    None => {}
                                 }
                             }
                         }
@@ -961,14 +958,7 @@ impl NetStatData {
                                             traffic: local_port_traffic.clone(),
                                         });
                                     }
-                                    None => {
-                                        process_map.insert(proc.pid, ProcessDisplayInfo {
-                                            pid: proc.pid,
-                                            name: proc.name.clone(),
-                                            traffic: TrafficInfo::new(),
-                                        });
-                                        //println!("No traffic for process: {:?} {:?}", proc.pid, protocol_port);
-                                    }
+                                    None => {}
                                 }
                             },
                         }
