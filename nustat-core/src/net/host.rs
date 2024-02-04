@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::IpAddr};
+use std::net::IpAddr;
 
 use serde::{Serialize, Deserialize};
 
@@ -16,7 +16,6 @@ pub struct RemoteHostInfo {
     pub asn: u32,
     pub as_name: String,
     pub traffic_info: TrafficInfo,
-    pub protocol_stat: HashMap<String, TrafficInfo>,
     pub first_seen: String,
     pub updated_at: String,
 }
@@ -32,22 +31,13 @@ impl RemoteHostInfo {
             asn: 0,
             as_name: String::new(),
             traffic_info: TrafficInfo::new(),
-            protocol_stat: HashMap::new(),
             first_seen: sys::get_sysdate(),
             updated_at: sys::get_sysdate(),
         }
     }
     pub fn merge(&mut self, other: &RemoteHostInfo) {
-        // Update traffic_info and protocol_stat
+        // Update traffic_info
         self.traffic_info.add_traffic(&other.traffic_info);
-        for (proto, traffic) in &other.protocol_stat {
-            if self.protocol_stat.contains_key(proto) {
-                let traffic_info = self.protocol_stat.get_mut(proto).unwrap();
-                traffic_info.add_traffic(traffic);
-            } else {
-                self.protocol_stat.insert(proto.clone(), traffic.clone());
-            }
-        }
         // Update other fields
         if self.hostname.is_empty() {
             self.hostname = other.hostname.clone();

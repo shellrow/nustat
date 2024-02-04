@@ -1,17 +1,21 @@
 use std::thread;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use nustat_core::pcap;
 use tauri::Manager;
 
 pub fn start_background_task(handle: &tauri::AppHandle) {
+    
+    let netstat_strage = handle.state::<Arc<nustat_core::net::stat::NetStatStrage>>();
     // For background packet capture
-    let netstat_strage_state = handle.state::<Arc<Mutex<nustat_core::net::stat::NetStatStrage>>>();
-    let mut netstat_strage_pcap = netstat_strage_state.inner().clone();
-    // For DNS Map update
-    let mut netstat_strage_dns = netstat_strage_state.inner().clone();
+    let mut netstat_strage_pcap = Arc::clone(&netstat_strage);
     // For socket info update
-    let mut netstat_strage_socket = netstat_strage_state.inner().clone();
+    let mut netstat_strage_socket = Arc::clone(&netstat_strage);
+    // For DNS Map update
+    let mut netstat_strage_dns = Arc::clone(&netstat_strage);
+    // For IP Info update
+    //let mut netstat_strage_ipinfo = Arc::clone(&netstat_strage);
     thread::spawn(move || {
+        netstat_strage_pcap.load_ipdb();
         println!("[start] background_capture");
         match nustat_core::pcap::PacketCaptureOptions::default() {
             Ok(pcap_option) => {
@@ -30,9 +34,8 @@ pub fn start_background_task(handle: &tauri::AppHandle) {
         println!("[start] dns_map_update");
         nustat_core::dns::start_dns_map_update(&mut netstat_strage_dns);
     });
-    let mut netstat_strage_ipinfo = netstat_strage_state.inner().clone();
-    thread::spawn(move || {
+    /* thread::spawn(move || {
         println!("[start] ipinfo_update");
         nustat_core::ipinfo::start_ipinfo_update(&mut netstat_strage_ipinfo);
-    });
+    }); */
 }

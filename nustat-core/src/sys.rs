@@ -36,8 +36,6 @@ pub fn get_config_dir_path() -> Option<PathBuf> {
                 }
             }
             Some(path)
-            //let path: String = format!("{}\\{}", path.display(), USER_CONFIG_DIR_NAME);
-            //path
         }
         None => None,
     }

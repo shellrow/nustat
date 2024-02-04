@@ -66,7 +66,7 @@ impl ServiceDatabase {
                 })
             }
             Err(e) => {
-                println!("Error: {:?}", e);
+                eprintln!("Error: {:?}", e);
                 Err(e)
             }
         }

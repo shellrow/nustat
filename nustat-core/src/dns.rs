@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 use std::time::Duration;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
 #[cfg(not(any(unix, target_os = "windows")))]
 use hickory_resolver::config::{ResolverConfig, ResolverOpts};
@@ -290,42 +290,69 @@ pub fn lookup_addr(addr: IpAddr) -> Vec<String> {
     resolve_ip(addr)
 }
 
-pub fn start_dns_map_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
+pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
     loop {
         let mut lookup_target_ips: Vec<IpAddr> = vec![];
-        let mut updated :bool = false;
-        match netstat_strage.try_lock() {
-            Ok(netstat_strage) => {
-                netstat_strage.remote_hosts.keys().for_each(|ip_addr| {
-                    if !netstat_strage.reverse_dns_map.contains_key(ip_addr) {
-                        lookup_target_ips.push(*ip_addr);
-                    }
-                });
-                updated = true;
+        // Lock the remote_hosts
+        let remote_hosts_inner = match netstat_strage.remote_hosts.try_lock() {
+            Ok(remote_hosts) => {
+                remote_hosts
             }
-            Err(_e) => {
-                //eprintln!("[dns_map_update] lock error: {}", e);
+            Err(e) => {
+                eprintln!("[dns_map_update] lock error: {}", e);
+                continue;
+            }
+        };
+        // Lock the reverse_dns_map
+        let reverse_dns_map_inner = match netstat_strage.reverse_dns_map.try_lock() {
+            Ok(reverse_dns_map) => {
+                reverse_dns_map
+            }
+            Err(e) => {
+                eprintln!("[dns_map_update] lock error: {}", e);
+                continue;
+            }
+        };
+        for (ip_addr, _remote_host) in remote_hosts_inner.iter() {
+            if !reverse_dns_map_inner.contains_key(ip_addr) {
+                lookup_target_ips.push(*ip_addr);
             }
         }
+        // Drop the lock before calling lookup_ips
+        drop(remote_hosts_inner);
+        drop(reverse_dns_map_inner);
         let mut resolver = DnsResolver::new();
         let dns_map = resolver.lookup_ips(lookup_target_ips);
-        //let dns_map = crate::dns::lookup_ips(lookup_target_ips);
-        match netstat_strage.try_lock() {
-            Ok(mut netstat_strage) => {
-                for (ip_addr, hostname) in dns_map {
-                    if let Some(remote_host) = netstat_strage.remote_hosts.get_mut(&ip_addr) {
-                        remote_host.hostname = hostname.clone();
-                    }
-                    netstat_strage.reverse_dns_map.insert(ip_addr, hostname);
-                }
+        // Lock the remote_hosts
+        let mut remote_hosts_inner = match netstat_strage.remote_hosts.try_lock() {
+            Ok(remote_hosts) => {
+                remote_hosts
             }
-            Err(_e) => {
-                //eprintln!("[dns_map_update] lock error: {}", e);
+            Err(e) => {
+                eprintln!("[dns_map_update] lock error: {}", e);
+                continue;
             }
+        };
+        // Lock the reverse_dns_map
+        let mut reverse_dns_map_inner = match netstat_strage.reverse_dns_map.try_lock() {
+            Ok(reverse_dns_map) => {
+                reverse_dns_map
+            }
+            Err(e) => {
+                eprintln!("[dns_map_update] lock error: {}", e);
+                continue;
+            }
+        };
+        for (ip_addr, hostname) in dns_map {
+            if let Some(remote_host) = remote_hosts_inner.get_mut(&ip_addr) {
+                remote_host.hostname = hostname.clone();
+            }
+            reverse_dns_map_inner.insert(ip_addr, hostname);
         }
-        if updated {
-            std::thread::sleep(std::time::Duration::from_secs(8));
-        }
+        // Drop the lock
+        drop(remote_hosts_inner);
+        drop(reverse_dns_map_inner);
+        std::thread::sleep(std::time::Duration::from_secs(8));
     }
 }
 

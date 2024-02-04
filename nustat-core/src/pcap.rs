@@ -207,7 +207,7 @@ pub fn start_capture(
     report
 }
 
-pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
+pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_strage: &mut Arc<NetStatStrage>) {
     let interfaces = xenet::net::interface::get_interfaces();
     let interface = interfaces
         .into_iter()
@@ -247,14 +247,10 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
                 let frame: Frame = Frame::from_bytes(&packet, parse_option);
                 if filter_packet(&frame, &capture_options) {
                     let packet_frame = PacketFrame::from_xenet_frame(0,interface.index, interface.name.clone(), frame);
-                    match netstat_strage.lock() {
-                        Ok(mut netstat_strage) => {
-                            netstat_strage.update(packet_frame);
-                        }
-                        Err(e) => {
-                            println!("background_capture lock error: {:?}", e);
-                        }
+                    if netstat_strage.interface_changed(interface.index) {
+                        netstat_strage.change_interface(&interface);
                     }
+                    netstat_strage.update(packet_frame);
                 }
             }
             Err(_) => {}

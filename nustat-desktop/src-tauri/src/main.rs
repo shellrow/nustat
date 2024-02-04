@@ -6,12 +6,13 @@ mod commands;
 mod task;
 mod components;
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 use nustat_core::net::stat::NetStatStrage;
 use commands::{get_overview, get_remote_hosts, get_netstat, get_process_info, start_packet_capture};
 
 fn main() {
-    let netstat_strage: Arc<Mutex<NetStatStrage>> = Arc::new(Mutex::new(NetStatStrage::new()));
+    //let netstat_strage: Arc<Mutex<NetStatStrage>> = Arc::new(Mutex::new(NetStatStrage::new()));
+    let netstat_strage: Arc<NetStatStrage> = Arc::new(NetStatStrage::new());
     tauri::Builder::default()
         .manage(netstat_strage)
         .invoke_handler(tauri::generate_handler![

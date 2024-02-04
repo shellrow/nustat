@@ -103,6 +103,20 @@ pub fn get_default_local_ips() -> HashSet<IpAddr> {
     ips
 }
 
+pub fn get_interface_local_ips(iface: &Interface) -> HashSet<IpAddr> {
+    let mut ips: HashSet<IpAddr> = HashSet::new();
+    for ip in iface.ipv4.clone() {
+        ips.insert(IpAddr::V4(ip.addr));
+    }
+    for ip in iface.ipv6.clone() {
+        ips.insert(IpAddr::V6(ip.addr));
+    }
+    // localhost IP addresses
+    ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
+    ips.insert(IpAddr::V6(Ipv6Addr::LOCALHOST));
+    ips
+}
+
 pub fn get_interface_macaddr(iface: &Interface) -> MacAddr {
     match &iface.mac_addr {
         Some(mac_addr) => mac_addr.clone(),

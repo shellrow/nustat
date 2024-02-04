@@ -1,6 +1,5 @@
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::{Arc, Mutex};
-
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use xenet::packet::tcp::TcpFlags;
 use std::collections::HashMap;
@@ -15,7 +14,7 @@ use crate::net::protocol::Protocol;
 pub struct SocketConnection {
     pub local_socket: SocketAddr,
     pub remote_socket: SocketAddr,
-    pub protocol: Protocol,
+    pub protocol: TransportProtocol,
 }
 
 #[derive(Serialize, Deserialize, Copy, Clone, Debug, PartialEq)]
@@ -97,7 +96,6 @@ impl std::fmt::Display for SocketStatus {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketConnectionInfo {
-    pub traffic_info: TrafficInfo,
     pub status: SocketStatus,
     pub process: Option<ProcessInfo>,
 }
@@ -105,13 +103,11 @@ pub struct SocketConnectionInfo {
 impl SocketConnectionInfo {
     pub fn new() -> Self {
         SocketConnectionInfo {
-            traffic_info: TrafficInfo::new(),
             status: SocketStatus::Unknown,
             process: None,
         }
     }
     pub fn merge(&mut self, other: &SocketConnectionInfo) {
-        self.traffic_info.add_traffic(&other.traffic_info);
         self.status = other.status;
         self.process = other.process.clone();
     }
@@ -135,7 +131,7 @@ pub enum AddressFamily {
     IPv6
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Hash, Eq, PartialOrd, Ord, Copy)]
 pub enum TransportProtocol {
     TCP,
     UDP
@@ -148,6 +144,12 @@ impl TransportProtocol {
             TransportProtocol::UDP => "UDP",
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
+pub struct ProtocolSocketAddress {
+    pub socket: SocketAddr,
+    pub protocol: TransportProtocol,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone)]
@@ -275,63 +277,72 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
     sockets_info
 }
 
-pub fn start_socket_info_update(netstat_strage: &mut Arc<Mutex<NetStatStrage>>) {
+pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
     loop {
         let sockets_info = get_sockets_info(SocketInfoOption::default());
-        let mut updated: bool = false;
-        match netstat_strage.try_lock() {
-            Ok(mut netstat_strage) => {
-                // remove old connections
-                let mut remove_keys: Vec<SocketConnection> = vec![];
-                for conn in netstat_strage.connections.iter() {
-                    if !sockets_info.iter().any(|si| si.local_ip_addr == conn.0.local_socket.ip() && si.local_port == conn.0.local_socket.port()) {
-                        remove_keys.push(conn.0.to_owned());
-                    }
+        // Lock the connection
+        let mut connections_inner = match netstat_strage.connections.try_lock() {
+            Ok(connections) => {
+                connections
+            }
+            Err(e) => {
+                eprintln!("[socket_info_update] lock error: {}", e);
+                continue;
+            }
+        };
+        // remove old connections
+        let mut remove_keys: Vec<SocketConnection> = vec![];
+        for conn in connections_inner.iter() {
+            if !sockets_info.iter().any(|si| si.local_ip_addr == conn.0.local_socket.ip() && si.local_port == conn.0.local_socket.port()) {
+                remove_keys.push(conn.0.to_owned());
+            }
+        }
+        for key in remove_keys {
+            connections_inner.remove(&key);
+        }
+        // update connections
+        for socket_info in sockets_info {
+            match socket_info.protocol {
+                Protocol::TCP => {
+                    let remote_ip_addr: IpAddr = if let Some(ip) = socket_info.remote_ip_addr { ip } else { IpAddr::V4(Ipv4Addr::UNSPECIFIED) };
+                    let socket_connection: SocketConnection = SocketConnection {
+                        local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
+                        remote_socket: SocketAddr::new(remote_ip_addr, socket_info.remote_port.unwrap_or(0)),
+                        protocol: TransportProtocol::TCP,
+                    };
+                    let socket_conn_info: &mut SocketConnectionInfo = connections_inner.entry(socket_connection).or_insert(SocketConnectionInfo {
+                        status: SocketStatus::Unknown,
+                        process: None,
+                    });
+                    socket_conn_info.status = socket_info.status;
+                    socket_conn_info.process = socket_info.process;
                 }
-                for key in remove_keys {
-                    netstat_strage.connections.remove(&key);
-                }
-                // update connections
-                for socket_info in sockets_info {
-                    match socket_info.protocol {
-                        Protocol::TCP => {
-                            let remote_ip_addr: IpAddr = if let Some(ip) = socket_info.remote_ip_addr { ip } else { IpAddr::V4(Ipv4Addr::UNSPECIFIED) };
-                            let socket_connection: SocketConnection = SocketConnection {
-                                local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
-                                remote_socket: SocketAddr::new(remote_ip_addr, socket_info.remote_port.unwrap_or(0)),
-                                protocol: Protocol::TCP,
-                            };
-                            let socket_conn_info: &mut SocketConnectionInfo = netstat_strage.connections.entry(socket_connection).or_insert(SocketConnectionInfo {
-                                traffic_info: TrafficInfo::new(),
-                                status: SocketStatus::Unknown,
-                                process: None,
-                            });
-                            socket_conn_info.status = socket_info.status;
-                            socket_conn_info.process = socket_info.process;
-                        }
-                        Protocol::UDP => {
-                            // UDP is not a connection-oriented protocol.
-                            // pcap thread can get the Destination IP address and port number from the packet.
-                            // But we want to know which process is using the socket.
-                            // So we use local_socket as a key and update SocketConnectionInfo.
-                            for conn in netstat_strage.connections.iter_mut() {
-                                if conn.0.local_socket.ip() == socket_info.local_ip_addr && conn.0.local_socket.port() == socket_info.local_port {
-                                    conn.1.process = socket_info.process;
-                                    break;
-                                }
+                Protocol::UDP => {
+                    let socket_connection: SocketConnection = SocketConnection {
+                        local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
+                        remote_socket: if socket_info.remote_ip_addr.is_some() {
+                            SocketAddr::new(socket_info.remote_ip_addr.unwrap(), socket_info.remote_port.unwrap_or(0))
+                        } else {
+                            // IPv4 unspecified address or IPv6 unspecified address
+                            match socket_info.ip_version {
+                                AddressFamily::IPv4 => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
+                                AddressFamily::IPv6 => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
                             }
-                        }
-                        _ => {},
-                    }
+                        },
+                        protocol: TransportProtocol::UDP,
+                    };
+                    let socket_conn_info: &mut SocketConnectionInfo = connections_inner.entry(socket_connection).or_insert(SocketConnectionInfo {
+                        status: SocketStatus::Unknown,
+                        process: None,
+                    });
+                    socket_conn_info.status = socket_info.status;
+                    socket_conn_info.process = socket_info.process;
                 }
-                updated = true;
-            }
-            Err(_e) => {
-                //eprintln!("socket_info_update lock error{}", e);
+                _ => {},
             }
         }
-        if updated {
-            std::thread::sleep(std::time::Duration::from_secs(10));
-        }
+        // Drop the lock
+        drop(connections_inner);
+        std::thread::sleep(std::time::Duration::from_secs(10));
     }
 }

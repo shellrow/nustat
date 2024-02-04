@@ -2,6 +2,11 @@
 resolver = "2"
 members = [
     "nustat-core",
+    "nustat-db/nustat-db-ipv4",
+    "nustat-db/nustat-db-ipv6",
+    "nustat-db/nustat-db-as",
+    "nustat-db/nustat-db-country",
+    "nustat-db/nustat-db-service",
     "nustat",
     "nustat-desktop/src-tauri",
 ]

@@ -17,7 +17,7 @@ pub struct Overview {
     pub notificatons: Vec<Notification>,
 }
 
-impl Overview {
+/* impl Overview {
     pub fn new() -> Self {
         Overview {
             default_if_index: 0,
@@ -30,4 +30,4 @@ impl Overview {
             notificatons: Vec::new(),
         }
     }
-}
+} */
