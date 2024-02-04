@@ -125,6 +125,18 @@ pub struct SocketInfo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct SocketTrafficInfo {
+    pub local_ip_addr: IpAddr,
+    pub local_port: u16,
+    pub remote_ip_addr: Option<IpAddr>,
+    pub remote_port: Option<u16>,
+    pub protocol: TransportProtocol,
+    pub ip_version: AddressFamily,
+    pub process: Option<ProcessInfo>,
+    pub traffic: TrafficInfo,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AddressFamily {
     IPv4,
     IPv6

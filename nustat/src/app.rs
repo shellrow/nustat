@@ -1,4 +1,4 @@
-use nustat_core::{net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData}, process::ProcessDisplayInfo};
+use nustat_core::{net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData}, process::ProcessDisplayInfo, socket::SocketTrafficInfo};
 /* use rand::{
     distributions::{Distribution, Uniform},
     rngs::ThreadRng,
@@ -237,6 +237,7 @@ pub struct App<'a> {
     pub netstat_data: NetStatData,
     pub top_remote_hosts: Vec<HostDisplayInfo>,
     pub top_processes: Vec<ProcessDisplayInfo>,
+    pub top_connections: Vec<SocketTrafficInfo>,
     pub top_app_protocols: Vec<ServiceDisplayInfo>,
     pub enhanced_graphics: bool,
 }
@@ -305,6 +306,7 @@ impl<'a> App<'a> {
             netstat_data: NetStatData::new(),
             top_remote_hosts: vec![],
             top_processes: vec![],
+            top_connections: vec![],
             top_app_protocols: vec![],
             enhanced_graphics,
         }

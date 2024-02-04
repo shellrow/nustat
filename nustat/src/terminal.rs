@@ -54,7 +54,8 @@ fn run_app<B: Backend>(
             let diff_clone: NetStatData = netstat_strage.clone_data_and_reset();
             app.netstat_data.merge(diff_clone);
             app.top_remote_hosts = app.netstat_data.get_top_remote_hosts();
-            app.top_processes = app.netstat_data.get_top_processes();
+            //app.top_processes = app.netstat_data.get_top_processes();
+            app.top_connections = app.netstat_data.get_top_connections();
             data_last_tick = Instant::now();
         }
 

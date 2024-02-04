@@ -93,7 +93,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             Constraint::Length(10),
         ];
 
-        let mut table_state = TableState::default();
+        //let mut table_state = TableState::default();
         let table = Table::new(rows, widths)
         .column_spacing(1)
         //.style(Style::new().blue())
@@ -105,18 +105,12 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         .block(Block::default().borders(Borders::ALL).title("Top Remote Address"))
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
-        
-        f.render_stateful_widget(table, inner_chunks[0], &mut table_state);
-        //f.render_stateful_widget(processes, chunks[0], &mut app.top_processes.state);
 
+        f.render_widget(table, inner_chunks[0]);
+        //f.render_stateful_widget(table, inner_chunks[0], &mut table_state);
+        //f.render_stateful_widget(processes, chunks[0], &mut app.top_processes.state);
         // Draw top Network-Active Processes Table
-        let mut table_state = TableState::default();
-        /* let rows = [
-            Row::new(vec!["Cell1-1", "Cell1-2", "Cell1-3", "Cell1-4"]),
-            Row::new(vec!["Cell2-1", "Cell2-2", "Cell2-3", "Cell2-4"]),
-            Row::new(vec!["Cell3-1", "Cell3-2", "Cell3-3", "Cell3-4"]),
-            Row::new(vec!["Cell4-1", "Cell4-2", "Cell4-3", "Cell4-4"]),
-            ]; */
+        /* let mut table_state = TableState::default();
         let rows = app.top_processes.iter().map(|process| {
             Row::new(vec![
                 process.pid.to_string(),
@@ -146,7 +140,53 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         
         //f.render_widget(table, chunks[0]);
         f.render_stateful_widget(table, inner_chunks[1], &mut table_state);
-        //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state);
+        //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state); */
+        // Draw top Connections Table
+        //let mut table_state = TableState::default();
+        let rows = app.top_connections.iter().map(|conn| {
+            let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
+                remote_ip_addr.to_string()
+            } else {"".to_string()};
+            let remote_port_string = if let Some(remote_port) = &conn.remote_port {
+                remote_port.to_string()
+            } else {"".to_string()};
+            let mut process_id_string = "".to_string();
+            let mut process_name_string = "".to_string();
+            if let Some(process) = &conn.process {
+                process_id_string = process.pid.to_string();
+                process_name_string = process.name.clone();
+            }
+            Row::new(vec![
+                process_id_string,
+                process_name_string,
+                format!("{}:{}", conn.local_ip_addr.to_string(), conn.local_port.to_string()),
+                format!("{}:{}", remote_ip_string, remote_port_string),
+                conn.protocol.as_str().to_string(),
+                conn.traffic.bytes_received.to_string(),
+                conn.traffic.bytes_sent.to_string(),
+            ])
+        }).collect::<Vec<Row>>();
+        let widths = [
+            Constraint::Length(10),
+            Constraint::Length(20),
+            Constraint::Length(20),
+            Constraint::Length(20),
+            Constraint::Length(10),
+            Constraint::Length(10),
+            Constraint::Length(10),
+        ];
+        let table = Table::new(rows, widths)
+        .column_spacing(1)
+        .header(
+            Row::new(vec!["Process ID", "Process Name", "Local Socket", "Remote Socket", "Protocol", "↓ Bytes", "↑ Bytes"])
+                .style(Style::new().bold())
+                //.bottom_margin(1),
+        )
+        .block(Block::default().borders(Borders::ALL).title("Top Network-Active Processes"))
+        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_symbol(">>");
+        f.render_widget(table, inner_chunks[1]);
+        //f.render_stateful_widget(table, inner_chunks[1], &mut table_state);
     }
 }
 

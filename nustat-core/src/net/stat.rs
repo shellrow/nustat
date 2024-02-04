@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::{collections::{HashMap, HashSet}, net::{IpAddr, SocketAddr}, sync::{Arc, Mutex}};
 use super::{host::{HostDisplayInfo, RemoteHostInfo}, packet::PacketFrame, service::ServiceDisplayInfo, traffic::{Direction, TrafficInfo}};
 use super::interface;
-use crate::{db::ip::IpDatabase, notification::Notification, process::ProcessDisplayInfo, socket::{ProtocolPort, ProtocolSocketAddress, SocketConnection, SocketConnectionInfo, TransportProtocol}};
+use crate::{db::ip::IpDatabase, notification::Notification, process::{ProcessDisplayInfo, ProcessInfo}, socket::{AddressFamily, ProtocolPort, ProtocolSocketAddress, SocketConnection, SocketConnectionInfo, SocketTrafficInfo, TransportProtocol}};
 use crate::db::service::ServiceDatabase;
 
 #[derive(Debug, Clone)]
@@ -975,6 +975,87 @@ impl NetStatData {
             }
         }
         top_processes
+    }
+
+    pub fn get_top_connections(&self) -> Vec<SocketTrafficInfo> {
+        let mut connection_traffic_map: HashMap<SocketConnection, TrafficInfo> = HashMap::new();
+        self.connections.iter().for_each(|(conn, _conn_info)| {
+            let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
+                socket: conn.remote_socket,
+                protocol: conn.protocol,
+            };
+            let protocol_port: ProtocolPort = ProtocolPort {
+                port: conn.local_socket.port(),
+                protocol: conn.protocol,
+            };
+            match connection_traffic_map.get(&conn) {
+                Some(traffic) => {
+                    let mut traffic = traffic.clone();
+                    match self.sockets.get(&protocol_socket) {
+                        Some(socket_traffic) => {
+                            traffic.add_traffic(&socket_traffic);
+                        }
+                        None => {
+                            // Check local port traffic
+                            match self.local_ports.get(&protocol_port) {
+                                Some(local_port_traffic) => {
+                                    traffic.add_traffic(&local_port_traffic);
+                                }
+                                None => {}
+                            }
+                        },
+                    }
+                    connection_traffic_map.insert(*conn, traffic);
+                }
+                None => {
+                    match self.sockets.get(&protocol_socket) {
+                        Some(socket_traffic) => {
+                            connection_traffic_map.insert(*conn, socket_traffic.clone());
+                        }
+                        None => {
+                            // Check local port traffic
+                            match self.local_ports.get(&protocol_port) {
+                                Some(local_port_traffic) => {
+                                    connection_traffic_map.insert(*conn, local_port_traffic.clone());
+                                }
+                                None => {}
+                            }
+                        },
+                    }
+                }
+            }
+        });
+        let mut connection_bytes_map: HashMap<SocketConnection, usize> = HashMap::new();
+        connection_traffic_map.iter().for_each(|(conn, traffic_info)| {
+            connection_bytes_map.insert(*conn, traffic_info.bytes_sent + traffic_info.bytes_received);
+        });
+        let mut connection_bytes_vec: Vec<(&SocketConnection, &usize)> = connection_bytes_map.iter().collect();
+        connection_bytes_vec.sort_by(|a, b| b.1.cmp(a.1));
+        let mut top_connections: Vec<SocketTrafficInfo> = Vec::new();
+        for (conn, _) in connection_bytes_vec.iter().take(10) {
+            if let Some(traffic) = connection_traffic_map.get(conn) {
+                let process: Option<ProcessInfo> = match self.connections.get(conn) {
+                    Some(conn_info) => conn_info.process.clone(),
+                    None => None,
+                };
+                let socket_traffic_info: SocketTrafficInfo = SocketTrafficInfo {
+                    local_ip_addr: conn.local_socket.ip(),
+                    local_port: conn.local_socket.port(),
+                    remote_ip_addr: Some(conn.remote_socket.ip()),
+                    remote_port: Some(conn.remote_socket.port()),
+                    protocol: conn.protocol,
+                    ip_version: if conn.local_socket.is_ipv4() {
+                        AddressFamily::IPv4
+                    } else {
+                        AddressFamily::IPv6
+                    },
+                    process: process,
+                    traffic: traffic.clone(),
+                };
+                top_connections.push(socket_traffic_info);
+            }
+        }
+        top_connections
     }
 
     pub fn get_top_app_protocols(&self) -> Vec<ServiceDisplayInfo> {
