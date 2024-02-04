@@ -3,7 +3,7 @@ use serde::{Serialize, Deserialize};
 use std::{collections::{HashMap, HashSet}, net::{IpAddr, SocketAddr}, sync::{Arc, Mutex}};
 use super::{host::{HostDisplayInfo, RemoteHostInfo}, packet::PacketFrame, service::ServiceDisplayInfo, traffic::{Direction, TrafficInfo}};
 use super::interface;
-use crate::{db::ip::IpDatabase, notification::Notification, process::ProcessDisplayInfo, socket::{SocketConnection, SocketConnectionInfo, TransportProtocol}};
+use crate::{db::ip::IpDatabase, notification::Notification, process::ProcessDisplayInfo, socket::{ProtocolSocketAddress, SocketConnection, SocketConnectionInfo, TransportProtocol}};
 use crate::db::service::ServiceDatabase;
 
 #[derive(Debug, Clone)]
@@ -11,7 +11,7 @@ pub struct NetStatStrage {
     pub interface: Arc<Mutex<Interface>>,
     pub traffic: Arc<Mutex<TrafficInfo>>,
     pub remote_hosts: Arc<Mutex<HashMap<IpAddr, RemoteHostInfo>>>,
-    pub sockets: Arc<Mutex<HashMap<SocketConnection, TrafficInfo>>>,
+    pub sockets: Arc<Mutex<HashMap<ProtocolSocketAddress, TrafficInfo>>>,
     pub connections: Arc<Mutex<HashMap<SocketConnection, SocketConnectionInfo>>>,
     pub reverse_dns_map: Arc<Mutex<HashMap<IpAddr, String>>>,
     pub local_ips: Arc<Mutex<HashSet<IpAddr>>>,
@@ -120,6 +120,18 @@ impl NetStatStrage {
             }
         }
     } */
+    /// Get the sockets. (thread safe clone)
+    fn get_sockets(&self) -> HashMap<ProtocolSocketAddress, TrafficInfo> {
+        match self.sockets.lock() {
+            Ok(sockets) => {
+                sockets.clone()
+            }
+            Err(e) => {
+                eprintln!("get_sockets error: {:?}", e);
+                HashMap::new()
+            }
+        }
+    }
     /// Get the connections. (thread safe clone)
     pub fn get_connections(&self) -> HashMap<SocketConnection, SocketConnectionInfo> {
         match self.connections.lock() {
@@ -232,6 +244,16 @@ impl NetStatStrage {
             }
         }
     }
+    fn clear_sockets(&self) {
+        match self.sockets.lock() {
+            Ok(mut sockets) => {
+                sockets.clear();
+            }
+            Err(e) => {
+                eprintln!("clear_sockets error: {:?}", e);
+            }
+        }
+    }
     fn clear_connections(&self) {
         match self.connections.lock() {
             Ok(mut connections) => {
@@ -275,12 +297,14 @@ impl NetStatStrage {
     pub fn reset(&self) {
         self.clear_trraffic();
         self.clear_remote_hosts();
+        self.clear_sockets();
         self.clear_connections();
         self.clear_reverse_dns_map();
     }
     pub fn reset_data(&self) {
         self.clear_trraffic();
         self.clear_remote_hosts();
+        self.clear_sockets();
         self.clear_connections();
     }
     pub fn clone_and_reset(&self) -> Self {
@@ -294,6 +318,7 @@ impl NetStatStrage {
         clone.if_name = self.get_if_name();
         clone.traffic = self.get_trrafic();
         clone.remote_hosts = self.get_remote_hosts();
+        clone.sockets = self.get_sockets();
         clone.connections = self.get_connections();
         self.reset_data();
         clone
@@ -304,6 +329,7 @@ impl NetStatStrage {
         clone.if_name = self.get_if_name();
         clone.traffic = self.get_trrafic();
         clone.remote_hosts = self.get_remote_hosts();
+        clone.sockets = self.get_sockets();
         clone.connections = self.get_connections();
         clone
     }
@@ -438,7 +464,7 @@ impl NetStatStrage {
                 }
             },
         };
-        let local_ip_addr: IpAddr = match direction {
+        let _local_ip_addr: IpAddr = match direction {
             Direction::Egress => {
                 if let Some(ipv4) = &ip_layer.ipv4 {
                     IpAddr::V4(ipv4.source)
@@ -458,7 +484,7 @@ impl NetStatStrage {
                 }
             },
         };
-        let local_port: u16 = match direction {
+        let _local_port: u16 = match direction {
             Direction::Egress => {
                 if let Some(transport) = &frame.transport {
                     if let Some(tcp) = &transport.tcp {
@@ -571,9 +597,8 @@ impl NetStatStrage {
         if let Some(transport) = frame.transport {
             if let Some(_tcp) = transport.tcp {
                 // Update SocketInfo
-                let socket_connection: SocketConnection = SocketConnection {
-                    local_socket: SocketAddr::new(local_ip_addr, local_port),
-                    remote_socket: SocketAddr::new(remote_ip_addr, remote_port),
+                let socket_connection: ProtocolSocketAddress = ProtocolSocketAddress {
+                    socket: SocketAddr::new(remote_ip_addr, remote_port),
                     protocol: TransportProtocol::TCP,
                 };
                 let socket_traffic: &mut TrafficInfo = sockets_inner.entry(socket_connection).or_insert(TrafficInfo::new());
@@ -591,9 +616,8 @@ impl NetStatStrage {
             }
             if let Some(_udp) = transport.udp {
                 // Update SocketInfo
-                let socket_connection: SocketConnection = SocketConnection {
-                    local_socket: SocketAddr::new(local_ip_addr, local_port),
-                    remote_socket: SocketAddr::new(remote_ip_addr, remote_port),
+                let socket_connection: ProtocolSocketAddress = ProtocolSocketAddress {
+                    socket: SocketAddr::new(remote_ip_addr, remote_port),
                     protocol: TransportProtocol::UDP,
                 };
                 let socket_traffic: &mut TrafficInfo = sockets_inner.entry(socket_connection).or_insert(TrafficInfo::new());
@@ -613,6 +637,7 @@ impl NetStatStrage {
         // Drop the locks
         drop(traffic_inner);
         drop(remote_hosts_inner);
+        drop(sockets_inner);
         drop(ipdb_inner);
     }
 }
@@ -650,7 +675,7 @@ pub struct NetStatData {
     pub if_name: String,
     pub traffic: TrafficInfo,
     pub remote_hosts: HashMap<IpAddr, RemoteHostInfo>,
-    pub sockets: HashMap<SocketConnection, TrafficInfo>,
+    pub sockets: HashMap<ProtocolSocketAddress, TrafficInfo>,
     pub connections: HashMap<SocketConnection, SocketConnectionInfo>,
 }
 
@@ -681,6 +706,18 @@ impl NetStatData {
                 },
                 std::collections::hash_map::Entry::Vacant(entry) => {
                     entry.insert(host.clone());
+                },
+            }
+        });
+        // Update SocketInfo
+        other.sockets.iter().for_each(|(conn, traffic_info)| {
+            match self.sockets.entry(*conn) {
+                std::collections::hash_map::Entry::Occupied(mut entry) => {
+                    let traffic_info_entry = entry.get_mut();
+                    traffic_info_entry.add_traffic(traffic_info);
+                },
+                std::collections::hash_map::Entry::Vacant(entry) => {
+                    entry.insert(traffic_info.clone());
                 },
             }
         });
@@ -736,30 +773,34 @@ impl NetStatData {
         let mut process_map: HashMap<u32, ProcessDisplayInfo> = HashMap::new();
         let mut process_traffic_map: HashMap<u32, usize> = HashMap::new();
         self.connections.iter().for_each(|(conn, conn_info)| {
+            let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
+                socket: conn.remote_socket,
+                protocol: conn.protocol,
+            };
             if let Some(proc) = &conn_info.process {
                 match process_traffic_map.get(&proc.pid) {
                     Some(traffic) => {
                         let mut traffic = traffic.clone();
-                        match self.sockets.get(conn) {
+                        match self.sockets.get(&protocol_socket) {
                             Some(socket_traffic) => {
                                 traffic += socket_traffic.bytes_sent;
                                 traffic += socket_traffic.bytes_received;
                                 process_traffic_map.insert(proc.pid, traffic);
                             }
                             None => {
-                                //println!("No socket traffic for {:?}", conn);
+                                //println!("No socket traffic for {:?}", protocol_socket);
                             },
                         }
                         process_traffic_map.insert(proc.pid, traffic);
                     }
                     None => {
-                        match self.sockets.get(conn) {
+                        match self.sockets.get(&protocol_socket) {
                             Some(traffic) => {
                                 process_traffic_map.insert(proc.pid, traffic.bytes_sent + traffic.bytes_received);
                             }
                             None => {
                                 process_traffic_map.insert(proc.pid, 0);
-                                //println!("No socket traffic for {:?}", conn);
+                                //println!("No socket traffic for {:?}", protocol_socket);
                             }
                         }
                     }
@@ -767,7 +808,7 @@ impl NetStatData {
                 match process_map.get(&proc.pid) {
                     Some(app_protocol) => {
                         let mut traffic = app_protocol.traffic.clone();
-                        match self.sockets.get(conn) {
+                        match self.sockets.get(&protocol_socket) {
                             Some(socket_traffic) => {
                                 traffic.add_traffic(socket_traffic);
                                 process_map.insert(proc.pid, ProcessDisplayInfo {
@@ -777,12 +818,12 @@ impl NetStatData {
                                 });
                             }
                             None => {
-                                //println!("No socket traffic for {:?}", conn);
+                                //println!("No socket traffic for {:?}", protocol_socket);
                             },
                         }
                     }
                     None => {
-                        match self.sockets.get(conn) {
+                        match self.sockets.get(&protocol_socket) {
                             Some(traffic) => {
                                 process_map.insert(proc.pid, ProcessDisplayInfo {
                                     pid: proc.pid,
@@ -796,7 +837,7 @@ impl NetStatData {
                                     name: proc.name.clone(),
                                     traffic: TrafficInfo::new(),
                                 });
-                                //println!("No socket traffic for {:?}", conn);
+                                //println!("No socket traffic for {:?}", protocol_socket);
                             },
                         }
                     }
@@ -819,7 +860,7 @@ impl NetStatData {
         let mut app_protocol_map: HashMap<u16, ServiceDisplayInfo> = HashMap::new();
         let mut app_protocol_traffic_map: HashMap<u16, usize> = HashMap::new();
         self.sockets.iter().for_each(|(conn, traffic_info)| {
-            let port: u16 = conn.remote_socket.port();
+            let port: u16 = conn.socket.port();
             if port == 0 {
                 return;
             }

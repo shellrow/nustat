@@ -7,7 +7,7 @@ use nustat_core::net::stat::NetStatStrage;
 use nustat_core::net::traffic::TrafficInfo;
 use nustat_core::process::{ProcessInfo, ProcessTrafficInfo};
 use tauri::{Manager, State};
-use nustat_core::socket::{SocketInfo, SocketInfoOption};
+use nustat_core::socket::{ProtocolSocketAddress, SocketInfo, SocketInfoOption};
 use nustat_core::pcap::CaptureReport;
 use nustat_core::net::packet::PacketFrame;
 use nustat_core::net::stat::Overview;
@@ -95,11 +95,15 @@ pub fn get_process_info(netstat: State<'_, Arc<NetStatStrage>>) -> Vec<ProcessTr
         }
     };
     for (conn, conn_info) in netstat.get_connections() {
+        let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
+            socket: conn.remote_socket,
+            protocol: conn.protocol,
+        };
         if let Some(proc) = &conn_info.process {
             match process_map.get(&proc.pid) {
                 Some(traffic_info) => {
                     let mut traffic_info = traffic_info.clone();
-                    match sockets_inner.get(&conn) {
+                    match sockets_inner.get(&protocol_socket) {
                         Some(socket_traffic) => {
                             traffic_info.add_traffic(&socket_traffic);
                         }
@@ -108,7 +112,7 @@ pub fn get_process_info(netstat: State<'_, Arc<NetStatStrage>>) -> Vec<ProcessTr
                     process_map.insert(proc.pid, traffic_info);
                 }
                 None => {
-                    match sockets_inner.get(&conn) {
+                    match sockets_inner.get(&protocol_socket) {
                         Some(socket_traffic) => {
                             process_map.insert(proc.pid, socket_traffic.clone());
                         }
