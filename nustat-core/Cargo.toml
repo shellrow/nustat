@@ -37,3 +37,11 @@ nustat-db-service = { path = "../nustat-db/nustat-db-service" }
 [[example]]
 name = "parse_frame"
 path = "examples/parse_frame.rs"
+
+[[example]]
+name = "perf"
+path = "examples/perf.rs"
+
+[[example]]
+name = "socket_process"
+path = "examples/socket_process.rs"
