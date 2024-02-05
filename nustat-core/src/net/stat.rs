@@ -1,6 +1,6 @@
 use default_net::{mac::MacAddr, Interface};
 use serde::{Serialize, Deserialize};
-use std::{collections::{HashMap, HashSet}, net::{IpAddr, SocketAddr}, sync::{Arc, Mutex}};
+use std::{collections::HashMap, net::{IpAddr, SocketAddr}, sync::{Arc, Mutex}};
 use super::{host::{HostDisplayInfo, RemoteHostInfo}, packet::PacketFrame, service::ServiceDisplayInfo, traffic::{Direction, TrafficInfo}};
 use super::interface;
 use crate::{db::ip::IpDatabase, notification::Notification, process::{ProcessDisplayInfo, ProcessInfo}, socket::{AddressFamily, ProtocolPort, ProtocolSocketAddress, SocketConnection, SocketConnectionInfo, SocketTrafficInfo, TransportProtocol}};
@@ -15,7 +15,8 @@ pub struct NetStatStrage {
     pub local_ports: Arc<Mutex<HashMap<ProtocolPort, TrafficInfo>>>,
     pub connections: Arc<Mutex<HashMap<SocketConnection, SocketConnectionInfo>>>,
     pub reverse_dns_map: Arc<Mutex<HashMap<IpAddr, String>>>,
-    pub local_ips: Arc<Mutex<HashSet<IpAddr>>>,
+    //pub local_ips: Arc<Mutex<HashSet<IpAddr>>>,
+    pub local_ip_map: Arc<Mutex<HashMap<IpAddr, String>>>,
     pub ipdb: Arc<Mutex<IpDatabase>>,
 }
 
@@ -28,7 +29,7 @@ impl NetStatStrage {
                 Interface::dummy()
             }
         };
-        let local_ips = interface::get_interface_local_ips(&default_interface);
+        let local_ip_map = interface::get_local_ip_map();
         NetStatStrage {
             interface: Arc::new(Mutex::new(default_interface)),
             traffic: Arc::new(Mutex::new(TrafficInfo::new())),
@@ -37,7 +38,7 @@ impl NetStatStrage {
             local_ports: Arc::new(Mutex::new(HashMap::new())),
             connections: Arc::new(Mutex::new(HashMap::new())),
             reverse_dns_map: Arc::new(Mutex::new(HashMap::new())),
-            local_ips: Arc::new(Mutex::new(local_ips)),
+            local_ip_map: Arc::new(Mutex::new(local_ip_map)),
             ipdb: Arc::new(Mutex::new(IpDatabase::new())),
         }
     }
@@ -205,8 +206,8 @@ impl NetStatStrage {
         }
     } */
     /// Set the local ips. (thread safe set)
-    fn set_local_ips(&self, new_local_ips: HashSet<IpAddr>) {
-        match self.local_ips.lock() {
+    /* fn set_local_ips(&self, new_local_ips: HashMap<IpAddr, String>) {
+        match self.local_ip_map.lock() {
             Ok(mut local_ips) => {
                 *local_ips = new_local_ips;
             }
@@ -214,7 +215,7 @@ impl NetStatStrage {
                 eprintln!("set_local_ips error: {:?}", e);
             }
         }
-    }
+    } */
     /// Get the ipdb. (thread safe clone)
     /* fn get_ipdb(&self) -> IpDatabase {
         match self.ipdb.lock() {
@@ -364,7 +365,7 @@ impl NetStatStrage {
     pub fn change_interface(&self, interface: &Interface) {
         //self.reset();
         self.set_interface(interface.clone());
-        self.set_local_ips(interface::get_interface_local_ips(interface));
+        //self.set_local_ips(interface::get_interface_local_ips(interface));
     }
     pub fn interface_changed(&self, if_index: u32) -> bool {
         if if_index != self.get_if_index() {
@@ -395,7 +396,7 @@ impl NetStatStrage {
         }
     }
     pub fn update(&self, frame: PacketFrame) {
-        let local_ips_inner = match self.local_ips.lock() {
+        let local_ip_map_inner = match self.local_ip_map.lock() {
             Ok(inner) => inner,
             Err(e) => {
                 eprintln!("Failed to lock local_ips: {:?}", e);
@@ -456,17 +457,17 @@ impl NetStatStrage {
         };
         // Determine if the packet is incoming or outgoing.
         let direction: Direction = if let Some(ipv4) = &ip_layer.ipv4 {
-            if local_ips_inner.contains(&IpAddr::V4(ipv4.source)) {
+            if local_ip_map_inner.contains_key(&IpAddr::V4(ipv4.source)) {
                 Direction::Egress
-            } else if local_ips_inner.contains(&IpAddr::V4(ipv4.destination)) {
+            } else if local_ip_map_inner.contains_key(&IpAddr::V4(ipv4.destination)) {
                 Direction::Ingress
             } else {
                 return;
             }
         } else if let Some(ipv6) = &ip_layer.ipv6 {
-            if local_ips_inner.contains(&IpAddr::V6(ipv6.source)) {
+            if local_ip_map_inner.contains_key(&IpAddr::V6(ipv6.source)) {
                 Direction::Egress
-            } else if local_ips_inner.contains(&IpAddr::V6(ipv6.destination)) {
+            } else if local_ip_map_inner.contains_key(&IpAddr::V6(ipv6.destination)) {
                 Direction::Ingress
             } else {
                 return;

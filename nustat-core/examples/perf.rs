@@ -12,9 +12,10 @@ fn main() {
     let pcap_handle = thread::spawn(move || {
         netstat_strage_pcap.load_ipdb();
         println!("[start] background_capture");
-        match nustat_core::pcap::PacketCaptureOptions::default() {
-            Ok(pcap_option) => {
-                pcap::start_background_capture(pcap_option, &mut netstat_strage_pcap);
+        match default_net::get_default_interface() {
+            Ok(iface) => {
+                let pcap_option = nustat_core::pcap::PacketCaptureOptions::from_interface(&iface);
+                pcap::start_background_capture(pcap_option, &mut netstat_strage_pcap, iface);
             }
             Err(e) => {
                 println!("Error: {:?}", e);

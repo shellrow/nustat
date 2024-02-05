@@ -131,6 +131,25 @@ impl PacketCaptureOptions {
         };
         options
     }
+    pub fn from_interface(iface: &Interface) -> PacketCaptureOptions {
+        let options = PacketCaptureOptions {
+            interface_index: iface.index,
+            interface_name: iface.name.clone(),
+            src_ips: HashSet::new(),
+            dst_ips: HashSet::new(),
+            src_ports: HashSet::new(),
+            dst_ports: HashSet::new(),
+            ether_types: HashSet::new(),
+            ip_protocols: HashSet::new(),
+            capture_timeout: Duration::MAX,
+            read_timeout: Duration::from_millis(200),
+            promiscuous: false,
+            receive_undefined: true,
+            tunnel: iface.is_tun(),
+            loopback: iface.is_loopback(),
+        };
+        options
+    }
 }
 
 /// Start packet capture
@@ -138,14 +157,15 @@ pub fn start_capture(
     capture_options: PacketCaptureOptions,
     msg_tx: Sender<PacketFrame>,
     stop: &Arc<Mutex<bool>>,
+    interface: Interface,
 ) -> CaptureReport {
     let mut report = CaptureReport::new();
-    let interfaces = xenet::net::interface::get_interfaces();
+    /* let interfaces = xenet::net::interface::get_interfaces();
     let interface = interfaces
         .into_iter()
         .filter(|interface: &Interface| interface.index == capture_options.interface_index)
         .next()
-        .expect("Failed to get Interface");
+        .expect("Failed to get Interface"); */
     let config = xenet::datalink::Config {
         write_buffer_size: 4096,
         read_buffer_size: 4096,
@@ -207,13 +227,13 @@ pub fn start_capture(
     report
 }
 
-pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_strage: &mut Arc<NetStatStrage>) {
-    let interfaces = xenet::net::interface::get_interfaces();
+pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_strage: &mut Arc<NetStatStrage>, interface: Interface) {
+    /* let interfaces = xenet::net::interface::get_interfaces();
     let interface = interfaces
         .into_iter()
         .filter(|interface: &Interface| interface.index == capture_options.interface_index)
         .next()
-        .expect("Failed to get Interface");
+        .expect("Failed to get Interface"); */
     let config = xenet::datalink::Config {
         write_buffer_size: 4096,
         read_buffer_size: 4096,

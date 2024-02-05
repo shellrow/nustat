@@ -18,9 +18,10 @@ pub async fn start_packet_capture(app_handle: tauri::AppHandle) -> CaptureReport
     let (tx, rx): (Sender<PacketFrame>, Receiver<PacketFrame>) = channel();
     let stop = Arc::new(Mutex::new(false));
     let stop_handle = stop.clone();
-    let pcap_option = nustat_core::pcap::PacketCaptureOptions::default();
+    let default_interface = default_net::get_default_interface().unwrap();
+    let pcap_option = nustat_core::pcap::PacketCaptureOptions::from_interface(&default_interface);
     let pacp_handler = thread::spawn(move || {
-        nustat_core::pcap::start_capture(pcap_option.unwrap(), tx, &stop)
+        nustat_core::pcap::start_capture(pcap_option, tx, &stop, default_interface)
     });
     let stop_pcap_event = app_handle.listen_global("stop_pcap", move |event| {
         println!("got stop_pcap with payload {:?}", event.payload());

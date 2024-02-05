@@ -1,4 +1,4 @@
-use std::{collections::HashSet, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
+use std::{collections::{HashMap, HashSet}, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
 use default_net::mac::MacAddr;
 use xenet::net::interface::Interface;
 
@@ -115,6 +115,30 @@ pub fn get_interface_local_ips(iface: &Interface) -> HashSet<IpAddr> {
     ips.insert(IpAddr::V4(Ipv4Addr::LOCALHOST));
     ips.insert(IpAddr::V6(Ipv6Addr::LOCALHOST));
     ips
+}
+
+pub fn get_local_ip_map() -> HashMap<IpAddr, String> {
+    let mut ip_map: HashMap<IpAddr, String> = HashMap::new();
+    for iface in xenet::net::interface::get_interfaces() {
+        for ip in iface.ipv4.clone() {
+            ip_map.insert(IpAddr::V4(ip.addr), iface.name.clone());
+        }
+        for ip in iface.ipv6.clone() {
+            ip_map.insert(IpAddr::V6(ip.addr), iface.name.clone());
+        }
+    }
+    ip_map
+}
+
+// get usable interface list
+pub fn get_usable_interfaces() -> Vec<Interface> {
+    let mut usable_interfaces: Vec<Interface> = Vec::new();
+    for iface in xenet::net::interface::get_interfaces() {
+        if iface.is_up() && !iface.is_loopback() && (iface.ipv4.len() > 0 || iface.ipv6.len() > 0) {
+            usable_interfaces.push(iface);
+        }
+    }
+    usable_interfaces
 }
 
 pub fn get_interface_macaddr(iface: &Interface) -> MacAddr {
