@@ -157,28 +157,28 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                 process_name_string = process.name.clone();
             }
             Row::new(vec![
-                process_id_string,
-                process_name_string,
                 format!("{}:{}", conn.local_ip_addr.to_string(), conn.local_port.to_string()),
                 format!("{}:{}", remote_ip_string, remote_port_string),
                 conn.protocol.as_str().to_string(),
                 conn.traffic.bytes_received.to_string(),
                 conn.traffic.bytes_sent.to_string(),
+                process_id_string,
+                process_name_string,
             ])
         }).collect::<Vec<Row>>();
         let widths = [
-            Constraint::Length(10),
+            Constraint::Length(42),
+            Constraint::Length(42),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(8),
+            Constraint::Length(5),
             Constraint::Length(20),
-            Constraint::Length(20),
-            Constraint::Length(20),
-            Constraint::Length(10),
-            Constraint::Length(10),
-            Constraint::Length(10),
         ];
         let table = Table::new(rows, widths)
         .column_spacing(1)
         .header(
-            Row::new(vec!["Process ID", "Process Name", "Local Socket", "Remote Socket", "Protocol", "↓ Bytes", "↑ Bytes"])
+            Row::new(vec!["Local Socket", "Remote Socket", "Protocol", "↓ Bytes", "↑ Bytes", "PID", "Process Name"])
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )
