@@ -1073,11 +1073,36 @@ impl NetStatData {
                     Some(conn_info) => conn_info.process.clone(),
                     None => None,
                 };
+                // Get remote socket address
+                // if UDP, get remote ip from local_port's remote_socket
+                let remote_socket_addr: Option<SocketAddr> = match conn.protocol {
+                    TransportProtocol::TCP => Some(conn.remote_socket),
+                    TransportProtocol::UDP => {
+                        match self.local_ports.get(&ProtocolPort {
+                            port: conn.local_socket.port(),
+                            protocol: conn.protocol,
+                        }) {
+                            Some(remote_traffic_map) => {
+                                let remote_socket = remote_traffic_map.iter().next().unwrap().0;
+                                Some(*remote_socket)
+                            }
+                            None => None,
+                        }
+                    }
+                };
                 let socket_traffic_info: SocketTrafficInfo = SocketTrafficInfo {
                     local_ip_addr: conn.local_socket.ip(),
                     local_port: conn.local_socket.port(),
-                    remote_ip_addr: Some(conn.remote_socket.ip()),
-                    remote_port: Some(conn.remote_socket.port()),
+                    remote_ip_addr: if let Some(remote_socket) = remote_socket_addr {
+                        Some(remote_socket.ip())
+                    } else {
+                        None
+                    },
+                    remote_port: if let Some(remote_socket) = remote_socket_addr {
+                        Some(remote_socket.port())
+                    } else {
+                        None
+                    },
                     protocol: conn.protocol,
                     ip_version: if conn.local_socket.is_ipv4() {
                         AddressFamily::IPv4
