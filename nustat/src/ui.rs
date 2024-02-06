@@ -107,42 +107,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_symbol(">>");
 
         f.render_widget(table, inner_chunks[0]);
-        //f.render_stateful_widget(table, inner_chunks[0], &mut table_state);
-        //f.render_stateful_widget(processes, chunks[0], &mut app.top_processes.state);
-        // Draw top Network-Active Processes Table
-        /* let mut table_state = TableState::default();
-        let rows = app.top_processes.iter().map(|process| {
-            Row::new(vec![
-                process.pid.to_string(),
-                process.name.clone(),
-                process.traffic.bytes_received.to_string(),
-                process.traffic.bytes_sent.to_string(),
-            ])
-        }).collect::<Vec<Row>>();
-        // Columns widths are constrained in the same way as Layout...
-        let widths = [
-            Constraint::Length(10),
-            Constraint::Length(40),
-            Constraint::Length(10),
-            Constraint::Length(10),
-        ];
-
-        let table = Table::new(rows, widths)
-        .column_spacing(1)
-        .header(
-            Row::new(vec!["Process ID", "Process Name", "↓ Bytes", "↑ Bytes"])
-                .style(Style::new().bold())
-                //.bottom_margin(1),
-        )
-        .block(Block::default().borders(Borders::ALL).title("Top Network-Active Processes"))
-        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
-        .highlight_symbol(">>");
         
-        //f.render_widget(table, chunks[0]);
-        f.render_stateful_widget(table, inner_chunks[1], &mut table_state);
-        //f.render_stateful_widget(remote_hosts, chunks[0], &mut app.remote_hosts.state); */
-        // Draw top Connections Table
-        //let mut table_state = TableState::default();
         let rows = app.top_connections.iter().map(|conn| {
             let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
                 remote_ip_addr.to_string()
@@ -157,7 +122,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                 process_name_string = process.name.clone();
             }
             Row::new(vec![
-                format!("{}:{}", conn.local_ip_addr.to_string(), conn.local_port.to_string()),
+                format!("{}:{}", conn.interface_name, conn.local_port.to_string()),
                 format!("{}:{}", remote_ip_string, remote_port_string),
                 conn.protocol.as_str().to_string(),
                 conn.traffic.bytes_received.to_string(),
@@ -167,7 +132,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             ])
         }).collect::<Vec<Row>>();
         let widths = [
-            Constraint::Length(42),
+            Constraint::Length(20),
             Constraint::Length(42),
             Constraint::Length(8),
             Constraint::Length(8),
@@ -182,7 +147,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )
-        .block(Block::default().borders(Borders::ALL).title("Top Network-Active Processes"))
+        .block(Block::default().borders(Borders::ALL).title("Top Connections"))
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
         f.render_widget(table, inner_chunks[1]);

@@ -1,26 +1,26 @@
 use default_net::{mac::MacAddr, Interface};
 use serde::{Serialize, Deserialize};
-use std::{collections::HashMap, net::{IpAddr, SocketAddr}, sync::{Arc, Mutex}};
+use std::{collections::HashMap, net::IpAddr, sync::{Arc, Mutex}};
 use super::{host::{HostDisplayInfo, RemoteHostInfo}, packet::PacketFrame, service::ServiceDisplayInfo, traffic::{Direction, TrafficInfo}};
 use super::interface;
-use crate::{db::ip::IpDatabase, notification::Notification, process::{ProcessDisplayInfo, ProcessInfo}, socket::{AddressFamily, ProtocolPort, ProtocolSocketAddress, SocketConnection, SocketConnectionInfo, SocketTrafficInfo, TransportProtocol}};
+use crate::{db::ip::IpDatabase, notification::Notification, process::{ProcessDisplayInfo, ProcessInfo}, socket::{AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketProcess, SocketTrafficInfo, TransportProtocol}};
 use crate::db::service::ServiceDatabase;
 
 #[derive(Debug, Clone)]
 pub struct NetStatStrage {
     pub interface: Arc<Mutex<Interface>>,
     pub traffic: Arc<Mutex<TrafficInfo>>,
-    /// Remote Host Traffic Info
+    /// Remote Host Traffic Info Map (IpAddr -> RemoteHostInfo)
     pub remote_hosts: Arc<Mutex<HashMap<IpAddr, RemoteHostInfo>>>,
-    /// Remote Socket Traffic Info
-    pub sockets: Arc<Mutex<HashMap<ProtocolSocketAddress, TrafficInfo>>>,
-    /// Local Port (Key) and Remote Socket Traffic Info (Value)
-    pub local_ports: Arc<Mutex<HashMap<ProtocolPort, HashMap<SocketAddr, TrafficInfo>>>>,
-    /// Socket Connection Info
-    pub connections: Arc<Mutex<HashMap<SocketConnection, SocketConnectionInfo>>>,
+    /// Socket Connection Traffic Map (SocketConnection -> TrafficInfo)
+    pub connection_map: Arc<Mutex<HashMap<SocketConnection, TrafficInfo>>>,
+    /// Socket Process Map (LocalSocket -> SocketProcess)
+    pub local_socket_map: Arc<Mutex<HashMap<LocalSocket, SocketProcess>>>,
+    /// Reverse DNS Map (IpAddr -> Hostname)
     pub reverse_dns_map: Arc<Mutex<HashMap<IpAddr, String>>>,
-    //pub local_ips: Arc<Mutex<HashSet<IpAddr>>>,
+    /// Local IP Map (IpAddr -> Interface Name)
     pub local_ip_map: Arc<Mutex<HashMap<IpAddr, String>>>,
+    /// IP Database for IP, ASN, Country, etc.
     pub ipdb: Arc<Mutex<IpDatabase>>,
 }
 
@@ -38,9 +38,8 @@ impl NetStatStrage {
             interface: Arc::new(Mutex::new(default_interface)),
             traffic: Arc::new(Mutex::new(TrafficInfo::new())),
             remote_hosts: Arc::new(Mutex::new(HashMap::new())),
-            sockets: Arc::new(Mutex::new(HashMap::new())),
-            local_ports: Arc::new(Mutex::new(HashMap::new())),
-            connections: Arc::new(Mutex::new(HashMap::new())),
+            connection_map: Arc::new(Mutex::new(HashMap::new())),
+            local_socket_map: Arc::new(Mutex::new(HashMap::new())),
             reverse_dns_map: Arc::new(Mutex::new(HashMap::new())),
             local_ip_map: Arc::new(Mutex::new(local_ip_map)),
             ipdb: Arc::new(Mutex::new(IpDatabase::new())),
@@ -93,17 +92,6 @@ impl NetStatStrage {
             }
         }
     }
-    /// Set the traffic info. (thread safe set)
-    /* fn set_trrafic(&mut self, new_traffic: TrafficInfo) {
-        match self.traffic.lock() {
-            Ok(mut traffic) => {
-                *traffic = new_traffic;
-            }
-            Err(e) => {
-                eprintln!("set_trrafic error: {:?}", e);
-            }
-        }
-    } */
     /// Get the remote hosts. (thread safe clone)
     pub fn get_remote_hosts(&self) -> HashMap<IpAddr, RemoteHostInfo> {
         match self.remote_hosts.lock() {
@@ -116,133 +104,41 @@ impl NetStatStrage {
             }
         }
     }
-    /// Set the remote hosts. (thread safe set)
-    /* fn set_remote_hosts(&mut self, new_remote_hosts: HashMap<IpAddr, RemoteHostInfo>) {
-        match self.remote_hosts.lock() {
-            Ok(mut remote_hosts) => {
-                *remote_hosts = new_remote_hosts;
+    /// Get the connection_map (thread safe clone)
+    pub fn get_connection_map(&self) -> HashMap<SocketConnection, TrafficInfo> {
+        match self.connection_map.lock() {
+            Ok(connection_map) => {
+                connection_map.clone()
             }
             Err(e) => {
-                eprintln!("set_remote_hosts error: {:?}", e);
-            }
-        }
-    } */
-    /// Get the sockets. (thread safe clone)
-    fn get_sockets(&self) -> HashMap<ProtocolSocketAddress, TrafficInfo> {
-        match self.sockets.lock() {
-            Ok(sockets) => {
-                sockets.clone()
-            }
-            Err(e) => {
-                eprintln!("get_sockets error: {:?}", e);
+                eprintln!("get_connection_map error: {:?}", e);
                 HashMap::new()
             }
         }
     }
-    /// Get the local ports. (thread safe clone)
-    fn get_local_ports(&self) -> HashMap<ProtocolPort, HashMap<SocketAddr, TrafficInfo>> {
-        match self.local_ports.lock() {
-            Ok(local_ports) => {
-                local_ports.clone()
+    /// Get the local_socket_map (thread safe clone)
+    pub fn get_local_socket_map(&self) -> HashMap<LocalSocket, SocketProcess> {
+        match self.local_socket_map.lock() {
+            Ok(local_socket_map) => {
+                local_socket_map.clone()
             }
             Err(e) => {
-                eprintln!("get_local_ports error: {:?}", e);
+                eprintln!("get_local_socket_map error: {:?}", e);
                 HashMap::new()
             }
         }
     }
-    /// Get the connections. (thread safe clone)
-    pub fn get_connections(&self) -> HashMap<SocketConnection, SocketConnectionInfo> {
-        match self.connections.lock() {
-            Ok(connections) => {
-                connections.clone()
+    pub fn get_local_ip_map(&self) -> HashMap<IpAddr, String> {
+        match self.local_ip_map.try_lock() {
+            Ok(local_ip_map) => {
+                local_ip_map.clone()
             }
             Err(e) => {
-                eprintln!("get_connections error: {:?}", e);
+                eprintln!("get_local_ip_map error: {:?}", e);
                 HashMap::new()
             }
         }
     }
-    /// Set the connections. (thread safe set)
-    /* fn set_connections(&self, new_connections: HashMap<SocketConnection, SocketConnectionInfo>) {
-        match self.connections.lock() {
-            Ok(mut connections) => {
-                *connections = new_connections;
-            }
-            Err(e) => {
-                eprintln!("set_connections error: {:?}", e);
-            }
-        }
-    } */
-    /// Get the reverse dns map. (thread safe clone)
-    /* fn get_reverse_dns_map(&self) -> HashMap<IpAddr, String> {
-        match self.reverse_dns_map.lock() {
-            Ok(reverse_dns_map) => {
-                reverse_dns_map.clone()
-            }
-            Err(e) => {
-                eprintln!("get_reverse_dns_map error: {:?}", e);
-                HashMap::new()
-            }
-        }
-    } */
-    /// Set the reverse dns map. (thread safe set)
-    /* fn set_reverse_dns_map(&self, new_reverse_dns_map: HashMap<IpAddr, String>) {
-        match self.reverse_dns_map.lock() {
-            Ok(mut reverse_dns_map) => {
-                *reverse_dns_map = new_reverse_dns_map;
-            }
-            Err(e) => {
-                println!("set_reverse_dns_map error: {:?}", e);
-            }
-        }
-    } */
-    /// Get the local ips. (thread safe clone)
-    /* fn get_local_ips(&self) -> HashSet<IpAddr> {
-        match self.local_ips.lock() {
-            Ok(local_ips) => {
-                local_ips.clone()
-            }
-            Err(e) => {
-                eprintln!("get_local_ips error: {:?}", e);
-                HashSet::new()
-            }
-        }
-    } */
-    /// Set the local ips. (thread safe set)
-    /* fn set_local_ips(&self, new_local_ips: HashMap<IpAddr, String>) {
-        match self.local_ip_map.lock() {
-            Ok(mut local_ips) => {
-                *local_ips = new_local_ips;
-            }
-            Err(e) => {
-                eprintln!("set_local_ips error: {:?}", e);
-            }
-        }
-    } */
-    /// Get the ipdb. (thread safe clone)
-    /* fn get_ipdb(&self) -> IpDatabase {
-        match self.ipdb.lock() {
-            Ok(ipdb) => {
-                ipdb.clone()
-            }
-            Err(e) => {
-                eprintln!("get_ipdb error: {:?}", e);
-                IpDatabase::new()
-            }
-        }
-    } */
-    /// Set the ipdb. (thread safe set)
-    /* fn set_ipdb(&self, new_ipdb: IpDatabase) {
-        match self.ipdb.lock() {
-            Ok(mut ipdb) => {
-                *ipdb = new_ipdb;
-            }
-            Err(e) => {
-                eprintln!("set_ipdb error: {:?}", e);
-            }
-        }
-    } */
     fn clear_trraffic(&self) {
         match self.traffic.lock() {
             Ok(mut traffic) => {
@@ -263,33 +159,23 @@ impl NetStatStrage {
             }
         }
     }
-    fn clear_sockets(&self) {
-        match self.sockets.lock() {
-            Ok(mut sockets) => {
-                sockets.clear();
+    fn clear_connection_map(&self) {
+        match self.connection_map.lock() {
+            Ok(mut connection_map) => {
+                connection_map.clear();
             }
             Err(e) => {
-                eprintln!("clear_sockets error: {:?}", e);
+                eprintln!("clear_connection_map error: {:?}", e);
             }
         }
     }
-    fn clear_local_ports(&self) {
-        match self.local_ports.lock() {
-            Ok(mut local_ports) => {
-                local_ports.clear();
+    fn clear_local_socket_map(&self) {
+        match self.local_socket_map.lock() {
+            Ok(mut local_socket_map) => {
+                local_socket_map.clear();
             }
             Err(e) => {
-                eprintln!("clear_local_ports error: {:?}", e);
-            }
-        }
-    }
-    fn clear_connections(&self) {
-        match self.connections.lock() {
-            Ok(mut connections) => {
-                connections.clear();
-            }
-            Err(e) => {
-                eprintln!("clear_connections error: {:?}", e);
+                eprintln!("clear_local_socket_map error: {:?}", e);
             }
         }
     }
@@ -303,40 +189,18 @@ impl NetStatStrage {
             }
         }
     }
-    /* fn clear_local_ips(&self) {
-        match self.local_ips.lock() {
-            Ok(mut local_ips) => {
-                *local_ips = interface::get_default_local_ips();
-            }
-            Err(e) => {
-                eprintln!("clear_local_ips error: {:?}", e);
-            }
-        }
-    } */
-    /* fn clear_ipdb(&self) {
-        match self.ipdb.lock() {
-            Ok(mut ipdb) => {
-                *ipdb = IpDatabase::new();
-            }
-            Err(e) => {
-                eprintln!("clear_ipdb error: {:?}", e);
-            }
-        }
-    } */
     pub fn reset(&self) {
         self.clear_trraffic();
         self.clear_remote_hosts();
-        self.clear_sockets();
-        self.clear_local_ports();
-        self.clear_connections();
+        self.clear_connection_map();
+        self.clear_local_socket_map();
         self.clear_reverse_dns_map();
     }
     pub fn reset_data(&self) {
         self.clear_trraffic();
         self.clear_remote_hosts();
-        self.clear_sockets();
-        self.clear_local_ports();
-        self.clear_connections();
+        self.clear_connection_map();
+        self.clear_local_socket_map();
     }
     pub fn clone_and_reset(&self) -> Self {
         let clone = self.clone();
@@ -349,9 +213,9 @@ impl NetStatStrage {
         clone.if_name = self.get_if_name();
         clone.traffic = self.get_trrafic();
         clone.remote_hosts = self.get_remote_hosts();
-        clone.sockets = self.get_sockets();
-        clone.local_ports = self.get_local_ports();
-        clone.connections = self.get_connections();
+        clone.connection_map = self.get_connection_map();
+        clone.local_socket_map = self.get_local_socket_map();
+        clone.local_ip_map = self.get_local_ip_map();
         self.reset_data();
         clone
     }
@@ -361,9 +225,8 @@ impl NetStatStrage {
         clone.if_name = self.get_if_name();
         clone.traffic = self.get_trrafic();
         clone.remote_hosts = self.get_remote_hosts();
-        clone.local_ports = self.get_local_ports();
-        clone.sockets = self.get_sockets();
-        clone.connections = self.get_connections();
+        clone.connection_map = self.get_connection_map();
+        clone.local_socket_map = self.get_local_socket_map();
         clone
     }
     pub fn change_interface(&self, interface: &Interface) {
@@ -425,21 +288,12 @@ impl NetStatStrage {
                 return;
             }
         };
-        // Lock socket field
-        let mut sockets_inner = match self.sockets.lock() {
+        // Lock connection_map field
+        let mut connections_inner = match self.connection_map.lock() {
             Ok(inner) => inner,
             Err(e) => {
                 // Handle lock error (e.g., log and return or panic)
-                eprintln!("Failed to lock socket: {:?}", e);
-                return;
-            }
-        };
-        // Lock local_ports field
-        let mut local_ports_inner = match self.local_ports.lock() {
-            Ok(inner) => inner,
-            Err(e) => {
-                // Handle lock error (e.g., log and return or panic)
-                eprintln!("Failed to lock local_ports: {:?}", e);
+                eprintln!("Failed to lock connection_map: {:?}", e);
                 return;
             }
         };
@@ -506,7 +360,7 @@ impl NetStatStrage {
                 }
             },
         };
-        let _local_ip_addr: IpAddr = match direction {
+        let local_ip_addr: IpAddr = match direction {
             Direction::Egress => {
                 if let Some(ipv4) = &ip_layer.ipv4 {
                     IpAddr::V4(ipv4.source)
@@ -525,6 +379,10 @@ impl NetStatStrage {
                     return;
                 }
             },
+        };
+        let interface_name = match local_ip_map_inner.get(&local_ip_addr) {
+            Some(name) => name.clone(),
+            None => String::from("unknown"),
         };
         let local_port: u16 = match direction {
             Direction::Egress => {
@@ -635,16 +493,17 @@ impl NetStatStrage {
                 }
             },
         }
-        // Update SocketInfo if the packet is TCP or UDP.
+        // Update SocketConnection if the packet is TCP or UDP.
         if let Some(transport) = frame.transport {
-            let remote_socket_addr = SocketAddr::new(remote_ip_addr, remote_port);
             if let Some(_tcp) = transport.tcp {
-                // Update Remote SocketInfo
-                let socket_connection: ProtocolSocketAddress = ProtocolSocketAddress {
-                    socket: remote_socket_addr,
+                let socket_connection: SocketConnection = SocketConnection {
+                    interface_name: interface_name.clone(),
+                    local_port: local_port,
+                    remote_ip_addr: remote_ip_addr,
+                    remote_port: remote_port,
                     protocol: TransportProtocol::TCP,
                 };
-                let socket_traffic: &mut TrafficInfo = sockets_inner.entry(socket_connection).or_insert(TrafficInfo::new());
+                let socket_traffic: &mut TrafficInfo = connections_inner.entry(socket_connection).or_insert(TrafficInfo::new());
                 match direction {
                     Direction::Egress => {
                         socket_traffic.packet_sent += 1;
@@ -653,32 +512,18 @@ impl NetStatStrage {
                     Direction::Ingress => {
                         socket_traffic.packet_received += 1;
                         socket_traffic.bytes_received += frame.packet_len;
-                    },
-                }
-                // Update Local Port Info
-                let local_port_connection: ProtocolPort = ProtocolPort {
-                    port: local_port,
-                    protocol: TransportProtocol::TCP,
-                };
-                let local_port_traffic: &mut TrafficInfo = local_ports_inner.entry(local_port_connection).or_insert(HashMap::new()).entry(remote_socket_addr).or_insert(TrafficInfo::new());
-                match direction {
-                    Direction::Egress => {
-                        local_port_traffic.packet_sent += 1;
-                        local_port_traffic.bytes_sent += frame.packet_len;
-                    },
-                    Direction::Ingress => {
-                        local_port_traffic.packet_received += 1;
-                        local_port_traffic.bytes_received += frame.packet_len;
                     },
                 }
             }
             if let Some(_udp) = transport.udp {
-                // Update Remote SocketInfo
-                let socket_connection: ProtocolSocketAddress = ProtocolSocketAddress {
-                    socket: SocketAddr::new(remote_ip_addr, remote_port),
+                let socket_connection: SocketConnection = SocketConnection {
+                    interface_name: interface_name,
+                    local_port: local_port,
+                    remote_ip_addr: remote_ip_addr,
+                    remote_port: remote_port,
                     protocol: TransportProtocol::UDP,
                 };
-                let socket_traffic: &mut TrafficInfo = sockets_inner.entry(socket_connection).or_insert(TrafficInfo::new());
+                let socket_traffic: &mut TrafficInfo = connections_inner.entry(socket_connection).or_insert(TrafficInfo::new());
                 match direction {
                     Direction::Egress => {
                         socket_traffic.packet_sent += 1;
@@ -687,22 +532,6 @@ impl NetStatStrage {
                     Direction::Ingress => {
                         socket_traffic.packet_received += 1;
                         socket_traffic.bytes_received += frame.packet_len;
-                    },
-                }
-                // Update Local Port Info
-                let local_port_connection: ProtocolPort = ProtocolPort {
-                    port: local_port,
-                    protocol: TransportProtocol::UDP,
-                };
-                let local_port_traffic: &mut TrafficInfo = local_ports_inner.entry(local_port_connection).or_insert(HashMap::new()).entry(remote_socket_addr).or_insert(TrafficInfo::new());
-                match direction {
-                    Direction::Egress => {
-                        local_port_traffic.packet_sent += 1;
-                        local_port_traffic.bytes_sent += frame.packet_len;
-                    },
-                    Direction::Ingress => {
-                        local_port_traffic.packet_received += 1;
-                        local_port_traffic.bytes_received += frame.packet_len;
                     },
                 }
             }
@@ -710,7 +539,7 @@ impl NetStatStrage {
         // Drop the locks
         drop(traffic_inner);
         drop(remote_hosts_inner);
-        drop(sockets_inner);
+        drop(connections_inner);
         drop(ipdb_inner);
     }
 }
@@ -748,9 +577,9 @@ pub struct NetStatData {
     pub if_name: String,
     pub traffic: TrafficInfo,
     pub remote_hosts: HashMap<IpAddr, RemoteHostInfo>,
-    pub sockets: HashMap<ProtocolSocketAddress, TrafficInfo>,
-    pub local_ports: HashMap<ProtocolPort, HashMap<SocketAddr, TrafficInfo>>,
-    pub connections: HashMap<SocketConnection, SocketConnectionInfo>,
+    pub connection_map: HashMap<SocketConnection, TrafficInfo>,
+    pub local_socket_map: HashMap<LocalSocket, SocketProcess>,
+    pub local_ip_map: HashMap<IpAddr, String>,
 }
 
 impl NetStatData {
@@ -760,9 +589,9 @@ impl NetStatData {
             if_name: String::new(),
             traffic: TrafficInfo::new(),
             remote_hosts: HashMap::new(),
-            local_ports: HashMap::new(),
-            sockets: HashMap::new(),
-            connections: HashMap::new(),
+            connection_map: HashMap::new(),
+            local_socket_map: HashMap::new(),
+            local_ip_map: HashMap::new(),
         }
     }
     // merge using entry method to merge traffic info.
@@ -784,9 +613,9 @@ impl NetStatData {
                 },
             }
         });
-        // Update SocketInfo
-        other.sockets.iter().for_each(|(conn, traffic_info)| {
-            match self.sockets.entry(*conn) {
+        // Update SocketConnection Traffic Info
+        other.connection_map.iter().for_each(|(conn, traffic_info)| {
+            match self.connection_map.entry(conn.clone()) {
                 std::collections::hash_map::Entry::Occupied(mut entry) => {
                     let traffic_info_entry = entry.get_mut();
                     traffic_info_entry.add_traffic(traffic_info);
@@ -796,40 +625,20 @@ impl NetStatData {
                 },
             }
         });
-        // Update LocalPortInfo
-        other.local_ports.iter().for_each(|(port, remote_traffic_map)| {
-            match self.local_ports.entry(*port) {
+        // Update local_socket_map
+        other.local_socket_map.iter().for_each(|(local_socket, socket_process)| {
+            match self.local_socket_map.entry(local_socket.clone()) {
                 std::collections::hash_map::Entry::Occupied(mut entry) => {
-                    let traffic_info_entry = entry.get_mut();
-                    remote_traffic_map.iter().for_each(|(remote_socket, traffic_info)| {
-                        match traffic_info_entry.entry(*remote_socket) {
-                            std::collections::hash_map::Entry::Occupied(mut entry) => {
-                                let traffic_info_entry = entry.get_mut();
-                                traffic_info_entry.add_traffic(traffic_info);
-                            },
-                            std::collections::hash_map::Entry::Vacant(entry) => {
-                                entry.insert(traffic_info.clone());
-                            },
-                        }
-                    });
+                    let socket_process_entry = entry.get_mut();
+                    socket_process_entry.merge(socket_process);
                 },
                 std::collections::hash_map::Entry::Vacant(entry) => {
-                    entry.insert(remote_traffic_map.clone());
+                    entry.insert(socket_process.clone());
                 },
             }
         });
-        // Update SocketConnectionInfo
-        other.connections.iter().for_each(|(conn, conn_info)| {
-            match self.connections.entry(*conn) {
-                std::collections::hash_map::Entry::Occupied(mut entry) => {
-                    let conn_info_entry = entry.get_mut();
-                    conn_info_entry.merge(conn_info);
-                },
-                std::collections::hash_map::Entry::Vacant(entry) => {
-                    entry.insert(conn_info.clone());
-                },
-            }
-        });
+        // Update local_ip_map
+        self.local_ip_map = other.local_ip_map;
     }
     pub fn get_top_remote_hosts(&self) -> Vec<HostDisplayInfo> {
         let mut host_traffic_map: HashMap<IpAddr, usize> = HashMap::new();
@@ -867,250 +676,86 @@ impl NetStatData {
     }
 
     pub fn get_top_processes(&self) -> Vec<ProcessDisplayInfo> {
-        let mut process_map: HashMap<u32, ProcessDisplayInfo> = HashMap::new();
-        let mut process_traffic_map: HashMap<u32, usize> = HashMap::new();
-        self.connections.iter().for_each(|(conn, conn_info)| {
-            let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
-                socket: conn.remote_socket,
+        let mut process_traffic_map: HashMap<u32, TrafficInfo> = HashMap::new();
+        let mut process_map: HashMap<u32, ProcessInfo> = HashMap::new();
+        self.connection_map.iter().for_each(|(conn, traffic_info)| {
+            let local_socket: LocalSocket = LocalSocket {
+                interface_name: conn.interface_name.clone(),
+                port: conn.remote_port,
                 protocol: conn.protocol,
             };
-            let protocol_port: ProtocolPort = ProtocolPort {
-                port: conn.local_socket.port(),
-                protocol: conn.protocol,
-            };
-            if let Some(proc) = &conn_info.process {
-                match process_traffic_map.get(&proc.pid) {
-                    Some(traffic) => {
-                        let mut traffic = traffic.clone();
-                        match self.sockets.get(&protocol_socket) {
-                            Some(socket_traffic) => {
-                                traffic += socket_traffic.bytes_sent;
-                                traffic += socket_traffic.bytes_received;
-                                process_traffic_map.insert(proc.pid, traffic);
-                            }
-                            None => {
-                                // Check local port traffic
-                                match self.local_ports.get(&protocol_port) {
-                                    Some(remote_traffic_map) => {
-                                        remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                            traffic += traffic_info.bytes_sent;
-                                            traffic += traffic_info.bytes_received;
-                                        });
-                                        process_traffic_map.insert(proc.pid, traffic);
-                                    }
-                                    None => {
-                                        process_traffic_map.insert(proc.pid, traffic);
-                                    }
-                                }
-                            },
-                        }
-                        process_traffic_map.insert(proc.pid, traffic);
-                    }
-                    None => {
-                        match self.sockets.get(&protocol_socket) {
+            match self.local_socket_map.get(&local_socket) {
+                Some(socket_process) => {
+                    if let Some(process) = &socket_process.process {
+                        match process_traffic_map.get(&process.pid) {
                             Some(traffic) => {
-                                process_traffic_map.insert(proc.pid, traffic.bytes_sent + traffic.bytes_received);
+                                let mut traffic = traffic.clone();
+                                traffic.add_traffic(traffic_info);
+                                process_traffic_map.insert(process.pid, traffic);
+                                
                             }
                             None => {
-                                // Check local port traffic
-                                match self.local_ports.get(&protocol_port) {
-                                    Some(remote_traffic_map) => {
-                                        let mut traffic = 0;
-                                        remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                            traffic += traffic_info.bytes_sent;
-                                            traffic += traffic_info.bytes_received;
-                                        });
-                                        process_traffic_map.insert(proc.pid, traffic);
-                                    }
-                                    None => {}
-                                }
+                                process_traffic_map.insert(process.pid, traffic_info.clone());
                             }
                         }
+                        process_map.insert(process.pid, process.clone());
                     }
                 }
-                match process_map.get(&proc.pid) {
-                    Some(app_protocol) => {
-                        let mut traffic = app_protocol.traffic.clone();
-                        match self.sockets.get(&protocol_socket) {
-                            Some(socket_traffic) => {
-                                traffic.add_traffic(socket_traffic);
-                                process_map.insert(proc.pid, ProcessDisplayInfo {
-                                    pid: proc.pid,
-                                    name: proc.name.clone(),
-                                    traffic: traffic,
-                                });
-                            }
-                            None => {
-                                // Check local port traffic
-                                match self.local_ports.get(&protocol_port) {
-                                    Some(remote_traffic_map) => {
-                                        remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                            traffic.add_traffic(traffic_info);
-                                        });
-                                        process_map.insert(proc.pid, ProcessDisplayInfo {
-                                            pid: proc.pid,
-                                            name: proc.name.clone(),
-                                            traffic: traffic,
-                                        });
-                                    }
-                                    None => {
-                                        process_map.insert(proc.pid, ProcessDisplayInfo {
-                                            pid: proc.pid,
-                                            name: proc.name.clone(),
-                                            traffic: traffic,
-                                        });
-                                    }
-                                }
-                            },
-                        }
-                    }
-                    None => {
-                        match self.sockets.get(&protocol_socket) {
-                            Some(traffic) => {
-                                process_map.insert(proc.pid, ProcessDisplayInfo {
-                                    pid: proc.pid,
-                                    name: proc.name.clone(),
-                                    traffic: traffic.clone(),
-                                });
-                            }
-                            None => {
-                                // Check local port traffic
-                                match self.local_ports.get(&protocol_port) {
-                                    Some(remote_traffic_map) => {
-                                        let mut traffic = TrafficInfo::new();
-                                        remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                            traffic.add_traffic(traffic_info);
-                                        });
-                                        process_map.insert(proc.pid, ProcessDisplayInfo {
-                                            pid: proc.pid,
-                                            name: proc.name.clone(),
-                                            traffic: traffic,
-                                        });
-                                    }
-                                    None => {}
-                                }
-                            },
-                        }
-                    }
-                }
+                None => {}
             }
         });
-        let mut process_traffic_vec: Vec<(&u32, &usize)> = process_traffic_map.iter().collect();
-        process_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        // Create process total traffic map from process_traffic_map
+        let process_total_traffic_map: HashMap<u32, usize> = process_traffic_map.iter().map(|(pid, traffic)| (*pid, traffic.total_bytes())).collect();
+        // Sort process_total_traffic_map by traffic
+        let mut process_total_traffic_vec: Vec<(&u32, &usize)> = process_total_traffic_map.iter().collect();
+        process_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        // Create top processes from process_total_traffic_vec
         let mut top_processes: Vec<ProcessDisplayInfo> = Vec::new();
-        for (pid, _traffic) in process_traffic_vec.iter().take(10) {
-            if let Some(proc) = process_map.get(pid) {
-                top_processes.push(proc.clone());
+        for (pid, _) in process_total_traffic_vec.iter().take(10) {
+            if let Some(traffic) = process_traffic_map.get(pid) {
+                if let Some(process) = process_map.get(pid) {
+                    let process = ProcessDisplayInfo {
+                        pid: process.pid,
+                        name: process.name.clone(),
+                        traffic: traffic.clone(),
+                    };
+                    top_processes.push(process);
+                }
             }
         }
         top_processes
     }
 
     pub fn get_top_connections(&self) -> Vec<SocketTrafficInfo> {
-        let mut connection_traffic_map: HashMap<SocketConnection, TrafficInfo> = HashMap::new();
-        self.connections.iter().for_each(|(conn, _conn_info)| {
-            let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
-                socket: conn.remote_socket,
-                protocol: conn.protocol,
-            };
-            let protocol_port: ProtocolPort = ProtocolPort {
-                port: conn.local_socket.port(),
-                protocol: conn.protocol,
-            };
-            match connection_traffic_map.get(&conn) {
-                Some(traffic) => {
-                    let mut traffic = traffic.clone();
-                    match self.sockets.get(&protocol_socket) {
-                        Some(socket_traffic) => {
-                            traffic.add_traffic(&socket_traffic);
-                        }
-                        None => {
-                            // Check local port traffic
-                            match self.local_ports.get(&protocol_port) {
-                                Some(remote_traffic_map) => {
-                                    remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                        traffic.add_traffic(traffic_info);
-                                    });
-                                }
-                                None => {}
-                            }
-                        },
-                    }
-                    connection_traffic_map.insert(*conn, traffic);
-                }
-                None => {
-                    match self.sockets.get(&protocol_socket) {
-                        Some(socket_traffic) => {
-                            connection_traffic_map.insert(*conn, socket_traffic.clone());
-                        }
-                        None => {
-                            // Check local port traffic
-                            match self.local_ports.get(&protocol_port) {
-                                Some(remote_traffic_map) => {
-                                    let mut traffic = TrafficInfo::new();
-                                    remote_traffic_map.iter().for_each(|(_remote_socket, traffic_info)| {
-                                        traffic.add_traffic(traffic_info);
-                                    });
-                                    connection_traffic_map.insert(*conn, traffic);
-                                }
-                                None => {}
-                            }
-                        },
-                    }
-                }
-            }
-        });
-        let mut connection_bytes_map: HashMap<SocketConnection, usize> = HashMap::new();
-        connection_traffic_map.iter().for_each(|(conn, traffic_info)| {
-            connection_bytes_map.insert(*conn, traffic_info.bytes_sent + traffic_info.bytes_received);
-        });
-        let mut connection_bytes_vec: Vec<(&SocketConnection, &usize)> = connection_bytes_map.iter().collect();
-        connection_bytes_vec.sort_by(|a, b| b.1.cmp(a.1));
+        let connection_total_traffic_map: HashMap<SocketConnection, usize> = self.connection_map.iter().map(|(conn, traffic)| (conn.clone(), traffic.total_bytes())).collect();
+        let mut connection_total_traffic_vec: Vec<(&SocketConnection, &usize)> = connection_total_traffic_map.iter().collect();
+        connection_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
         let mut top_connections: Vec<SocketTrafficInfo> = Vec::new();
-        for (conn, _) in connection_bytes_vec.iter().take(10) {
-            if let Some(traffic) = connection_traffic_map.get(conn) {
-                let process: Option<ProcessInfo> = match self.connections.get(conn) {
-                    Some(conn_info) => conn_info.process.clone(),
-                    None => None,
-                };
-                // Get remote socket address
-                // if UDP, get remote ip from local_port's remote_socket
-                let remote_socket_addr: Option<SocketAddr> = match conn.protocol {
-                    TransportProtocol::TCP => Some(conn.remote_socket),
-                    TransportProtocol::UDP => {
-                        match self.local_ports.get(&ProtocolPort {
-                            port: conn.local_socket.port(),
-                            protocol: conn.protocol,
-                        }) {
-                            Some(remote_traffic_map) => {
-                                let remote_socket = remote_traffic_map.iter().next().unwrap().0;
-                                Some(*remote_socket)
-                            }
-                            None => None,
-                        }
-                    }
-                };
-                let socket_traffic_info: SocketTrafficInfo = SocketTrafficInfo {
-                    local_ip_addr: conn.local_socket.ip(),
-                    local_port: conn.local_socket.port(),
-                    remote_ip_addr: if let Some(remote_socket) = remote_socket_addr {
-                        Some(remote_socket.ip())
-                    } else {
-                        None
-                    },
-                    remote_port: if let Some(remote_socket) = remote_socket_addr {
-                        Some(remote_socket.port())
-                    } else {
-                        None
-                    },
+        for (conn, _) in connection_total_traffic_vec.iter().take(10) {
+            // Get process info from local_socket_map
+            let process: Option<ProcessInfo> = match self.local_socket_map.get(&LocalSocket {
+                interface_name: conn.interface_name.clone(),
+                port: conn.local_port,
+                protocol: conn.protocol,
+            }) {
+                Some(socket_process) => {
+                    socket_process.process.clone()
+                },
+                None => None,
+            };
+            if let Some(traffic) = self.connection_map.get(conn) {
+                let socket_traffic_info = SocketTrafficInfo {
+                    interface_name: conn.interface_name.clone(),
+                    local_port: conn.local_port,
+                    remote_ip_addr: Some(conn.remote_ip_addr),
+                    remote_port: Some(conn.remote_port),
                     protocol: conn.protocol,
-                    ip_version: if conn.local_socket.is_ipv4() {
-                        AddressFamily::IPv4
-                    } else {
-                        AddressFamily::IPv6
+                    ip_version: match conn.remote_ip_addr {
+                        IpAddr::V4(_) => AddressFamily::IPv4,
+                        IpAddr::V6(_) => AddressFamily::IPv6,
                     },
-                    process: process,
                     traffic: traffic.clone(),
+                    process: process,
                 };
                 top_connections.push(socket_traffic_info);
             }
@@ -1120,51 +765,35 @@ impl NetStatData {
 
     pub fn get_top_app_protocols(&self) -> Vec<ServiceDisplayInfo> {
         let service_db: ServiceDatabase = crate::db::service::ServiceDatabase::new();
-        let mut app_protocol_map: HashMap<u16, ServiceDisplayInfo> = HashMap::new();
-        let mut app_protocol_traffic_map: HashMap<u16, usize> = HashMap::new();
-        self.sockets.iter().for_each(|(conn, traffic_info)| {
-            let port: u16 = conn.socket.port();
-            if port == 0 {
-                return;
-            }
-            if let Some(service_name) = service_db.tcp_map.get(&port) {
-                match app_protocol_traffic_map.get(&port) {
-                    Some(traffic) => {
-                        let mut traffic = traffic.clone();
-                        traffic += traffic_info.bytes_sent;
-                        traffic += traffic_info.bytes_received;
-                        app_protocol_traffic_map.insert(port, traffic);
-                    }
-                    None => {
-                        app_protocol_traffic_map.insert(port, traffic_info.bytes_sent + traffic_info.bytes_received);
-                    }
+        let mut protocol_port_map: HashMap<ProtocolPort, TrafficInfo> = HashMap::new();
+        self.connection_map.iter().for_each(|(conn, traffic_info)| {
+            let protocol_port: ProtocolPort = ProtocolPort {
+                protocol: conn.protocol,
+                port: conn.remote_port,
+            };
+            match protocol_port_map.get(&protocol_port) {
+                Some(traffic) => {
+                    let mut traffic = traffic.clone();
+                    traffic.add_traffic(traffic_info);
+                    protocol_port_map.insert(protocol_port, traffic);
                 }
-                match app_protocol_map.get(&port) {
-                    Some(app_protocol) => {
-                        let mut traffic = app_protocol.traffic.clone();
-                        traffic.add_traffic(traffic_info);
-                        app_protocol_map.insert(port, ServiceDisplayInfo {
-                            port: port,
-                            name: service_name.clone(),
-                            traffic: traffic,
-                        });
-                    }
-                    None => {
-                        app_protocol_map.insert(port, ServiceDisplayInfo {
-                            port: port,
-                            name: service_name.clone(),
-                            traffic: traffic_info.clone(),
-                        });
-                    }
+                None => {
+                    protocol_port_map.insert(protocol_port, traffic_info.clone());
                 }
             }
         });
-        let mut app_protocol_traffic_vec: Vec<(&u16, &usize)> = app_protocol_traffic_map.iter().collect();
-        app_protocol_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
+        let protocol_total_traffic_map: HashMap<ProtocolPort, usize> = protocol_port_map.iter().map(|(protocol_port, traffic)| (*protocol_port, traffic.total_bytes())).collect();
+        let mut protocol_total_traffic_vec: Vec<(&ProtocolPort, &usize)> = protocol_total_traffic_map.iter().collect();
+        protocol_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
         let mut top_app_protocols: Vec<ServiceDisplayInfo> = Vec::new();
-        for (port, _) in app_protocol_traffic_vec.iter().take(10) {
-            if let Some(app_protocol) = app_protocol_map.get(port) {
-                top_app_protocols.push(app_protocol.clone());
+        for (protocol_port, _) in protocol_total_traffic_vec.iter().take(10) {
+            if let Some(traffic) = protocol_port_map.get(protocol_port) {
+                let service = ServiceDisplayInfo {
+                    port: protocol_port.port,
+                    name: service_db.tcp_map.get(&protocol_port.port).unwrap_or(&String::from("unknown")).clone(),
+                    traffic: traffic.clone(),
+                };
+                top_app_protocols.push(service);
             }
         }
         top_app_protocols

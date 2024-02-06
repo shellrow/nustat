@@ -1,18 +1,20 @@
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
 use xenet::packet::tcp::TcpFlags;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
 use crate::net::stat::NetStatStrage;
 use crate::net::traffic::TrafficInfo;
 use crate::process;
 use crate::process::ProcessInfo;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
 pub struct SocketConnection {
-    pub local_socket: SocketAddr,
-    pub remote_socket: SocketAddr,
+    pub interface_name: String,
+    pub local_port: u16,
+    pub remote_ip_addr: IpAddr,
+    pub remote_port: u16,
     pub protocol: TransportProtocol,
 }
 
@@ -94,19 +96,25 @@ impl std::fmt::Display for SocketStatus {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct SocketConnectionInfo {
+pub struct SocketProcess {
+    pub socket_addr: SocketAddr,
+    pub protocol: TransportProtocol,
     pub status: SocketStatus,
     pub process: Option<ProcessInfo>,
 }
 
-impl SocketConnectionInfo {
+impl SocketProcess {
     pub fn new() -> Self {
-        SocketConnectionInfo {
+        SocketProcess {
+            socket_addr: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
+            protocol: TransportProtocol::TCP,
             status: SocketStatus::Unknown,
             process: None,
         }
     }
-    pub fn merge(&mut self, other: &SocketConnectionInfo) {
+    pub fn merge(&mut self, other: &SocketProcess) {
+        self.socket_addr = other.socket_addr;
+        self.protocol = other.protocol;
         self.status = other.status;
         self.process = other.process.clone();
     }
@@ -126,7 +134,7 @@ pub struct SocketInfo {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketTrafficInfo {
-    pub local_ip_addr: IpAddr,
+    pub interface_name: String,
     pub local_port: u16,
     pub remote_ip_addr: Option<IpAddr>,
     pub remote_port: Option<u16>,
@@ -161,6 +169,26 @@ impl TransportProtocol {
 pub struct ProtocolSocketAddress {
     pub socket: SocketAddr,
     pub protocol: TransportProtocol,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord)]
+pub struct LocalSocket {
+    pub interface_name: String,
+    pub port: u16,
+    pub protocol: TransportProtocol,
+}
+
+impl LocalSocket {
+    pub fn new(interface_name: String, port: u16, protocol: TransportProtocol) -> Self {
+        LocalSocket {
+            interface_name: interface_name,
+            port: port,
+            protocol: protocol,
+        }
+    }
+    pub fn to_key_string(&self) -> String {
+        format!("{}-{}-{}", self.interface_name, self.port, self.protocol.as_str())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Hash, Eq, Clone, PartialOrd, Ord, Copy)]
@@ -295,10 +323,24 @@ pub fn get_sockets_info(opt: SocketInfoOption) -> Vec<SocketInfo> {
 }
 
 pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
+    let mut local_ip_map: HashMap<IpAddr, String> = HashMap::new();
     loop {
+        if local_ip_map.is_empty() {
+            local_ip_map = netstat_strage.get_local_ip_map();
+        }
         let sockets_info = get_sockets_info(SocketInfoOption::default());
-        // Lock the connection
-        let mut connections_inner = match netstat_strage.connections.try_lock() {
+        // Create Vec<LocalSocket>
+        let mut local_sockets: HashSet<LocalSocket> = HashSet::new();
+        for si in &sockets_info {
+            match local_ip_map.get(&si.local_ip_addr) {
+                Some(interface_name) => {
+                    local_sockets.insert(LocalSocket::new(interface_name.to_owned(), si.local_port, si.protocol));
+                }
+                None => {}
+            }
+        }
+        // Lock the local_socket_map
+        let mut local_socket_inner = match netstat_strage.local_socket_map.try_lock() {
             Ok(connections) => {
                 connections
             }
@@ -307,58 +349,30 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 continue;
             }
         };
-        // remove old connections
-        let mut remove_keys: Vec<SocketConnection> = vec![];
-        for conn in connections_inner.iter() {
-            if !sockets_info.iter().any(|si| si.local_ip_addr == conn.0.local_socket.ip() && si.local_port == conn.0.local_socket.port()) {
-                remove_keys.push(conn.0.to_owned());
+        // Remove old socket info
+        let mut remove_keys: Vec<LocalSocket> = vec![];
+        for conn in local_socket_inner.iter() {
+            if !local_sockets.contains(conn.0) {
+                remove_keys.push(conn.0.clone());
             }
         }
         for key in remove_keys {
-            connections_inner.remove(&key);
+            local_socket_inner.remove(&key);
         }
-        // update connections
+        // Update socket info
         for socket_info in sockets_info {
-            match socket_info.protocol {
-                TransportProtocol::TCP => {
-                    let remote_ip_addr: IpAddr = if let Some(ip) = socket_info.remote_ip_addr { ip } else { IpAddr::V4(Ipv4Addr::UNSPECIFIED) };
-                    let socket_connection: SocketConnection = SocketConnection {
-                        local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
-                        remote_socket: SocketAddr::new(remote_ip_addr, socket_info.remote_port.unwrap_or(0)),
-                        protocol: TransportProtocol::TCP,
-                    };
-                    let socket_conn_info: &mut SocketConnectionInfo = connections_inner.entry(socket_connection).or_insert(SocketConnectionInfo {
-                        status: SocketStatus::Unknown,
-                        process: None,
-                    });
-                    socket_conn_info.status = socket_info.status;
-                    socket_conn_info.process = socket_info.process;
+            match local_ip_map.get(&socket_info.local_ip_addr) {
+                Some(interface_name) => {
+                    let local_socket = LocalSocket::new(interface_name.to_owned(), socket_info.local_port, socket_info.protocol);
+                    let socket_process = local_socket_inner.entry(local_socket).or_insert(SocketProcess::new());
+                    socket_process.status = socket_info.status;
+                    socket_process.process = socket_info.process.clone();
                 }
-                TransportProtocol::UDP => {
-                    let socket_connection: SocketConnection = SocketConnection {
-                        local_socket: SocketAddr::new(socket_info.local_ip_addr, socket_info.local_port),
-                        remote_socket: if socket_info.remote_ip_addr.is_some() {
-                            SocketAddr::new(socket_info.remote_ip_addr.unwrap(), socket_info.remote_port.unwrap_or(0))
-                        } else {
-                            // IPv4 unspecified address or IPv6 unspecified address
-                            match socket_info.ip_version {
-                                AddressFamily::IPv4 => SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 0),
-                                AddressFamily::IPv6 => SocketAddr::new(IpAddr::V6(Ipv6Addr::UNSPECIFIED), 0),
-                            }
-                        },
-                        protocol: TransportProtocol::UDP,
-                    };
-                    let socket_conn_info: &mut SocketConnectionInfo = connections_inner.entry(socket_connection).or_insert(SocketConnectionInfo {
-                        status: SocketStatus::Unknown,
-                        process: None,
-                    });
-                    socket_conn_info.status = socket_info.status;
-                    socket_conn_info.process = socket_info.process;
-                }
+                None => {}
             }
         }
         // Drop the lock
-        drop(connections_inner);
+        drop(local_socket_inner);
         std::thread::sleep(std::time::Duration::from_secs(10));
     }
 }

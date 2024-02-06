@@ -29,4 +29,10 @@ impl TrafficInfo {
         self.bytes_sent += traffic.bytes_sent;
         self.bytes_received += traffic.bytes_received;
     }
+    pub fn total_packet(&self) -> usize {
+        self.packet_sent + self.packet_received
+    }
+    pub fn total_bytes(&self) -> usize {
+        self.bytes_sent + self.bytes_received
+    }
 }

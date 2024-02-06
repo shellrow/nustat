@@ -7,7 +7,7 @@ use nustat_core::net::stat::NetStatStrage;
 use nustat_core::net::traffic::TrafficInfo;
 use nustat_core::process::{ProcessInfo, ProcessTrafficInfo};
 use tauri::{Manager, State};
-use nustat_core::socket::{ProtocolSocketAddress, SocketInfo, SocketInfoOption};
+use nustat_core::socket::{LocalSocket, SocketInfo, SocketInfoOption};
 use nustat_core::pcap::CaptureReport;
 use nustat_core::net::packet::PacketFrame;
 use nustat_core::net::stat::Overview;
@@ -84,56 +84,52 @@ pub fn get_remote_hosts(netstat: State<'_, Arc<NetStatStrage>>) -> Vec<RemoteHos
 #[tauri::command]
 pub fn get_process_info(netstat: State<'_, Arc<NetStatStrage>>) -> Vec<ProcessTrafficInfo> {
     let mut processes: Vec<ProcessTrafficInfo> = Vec::new();
-    let mut process_list: Vec<ProcessInfo> = Vec::new();
-    let mut process_map: HashMap<u32, TrafficInfo> = HashMap::new();
-    let sockets_inner = match netstat.sockets.try_lock() {
-        Ok(sockets) => {
-            sockets
-        }
-        Err(e) => {
-            eprintln!("[get_process_info] lock error: {}", e);
-            return processes;
-        }
-    };
-    for (conn, conn_info) in netstat.get_connections() {
-        let protocol_socket: ProtocolSocketAddress = ProtocolSocketAddress {
-            socket: conn.remote_socket,
+    let mut process_traffic_map: HashMap<u32, TrafficInfo> = HashMap::new();
+    let mut process_map: HashMap<u32, ProcessInfo> = HashMap::new();
+    let connection_map = netstat.get_connection_map();
+    let local_socket_map = netstat.get_local_socket_map();
+    connection_map.iter().for_each(|(conn, traffic_info)| {
+        let local_socket: LocalSocket = LocalSocket {
+            interface_name: conn.interface_name.clone(),
+            port: conn.remote_port,
             protocol: conn.protocol,
         };
-        if let Some(proc) = &conn_info.process {
-            match process_map.get(&proc.pid) {
-                Some(traffic_info) => {
-                    let mut traffic_info = traffic_info.clone();
-                    match sockets_inner.get(&protocol_socket) {
-                        Some(socket_traffic) => {
-                            traffic_info.add_traffic(&socket_traffic);
-                        }
-                        None => {}
-                    }
-                    process_map.insert(proc.pid, traffic_info);
-                }
-                None => {
-                    match sockets_inner.get(&protocol_socket) {
-                        Some(socket_traffic) => {
-                            process_map.insert(proc.pid, socket_traffic.clone());
+        match local_socket_map.get(&local_socket) {
+            Some(socket_process) => {
+                if let Some(process) = &socket_process.process {
+                    match process_traffic_map.get(&process.pid) {
+                        Some(traffic) => {
+                            let mut traffic = traffic.clone();
+                            traffic.add_traffic(traffic_info);
+                            process_traffic_map.insert(process.pid, traffic);
+                            
                         }
                         None => {
-                            process_map.insert(proc.pid, TrafficInfo::new());
+                            process_traffic_map.insert(process.pid, traffic_info.clone());
                         }
                     }
-                    process_list.push(proc.clone());
+                    process_map.insert(process.pid, process.clone());
                 }
             }
+            None => {}
         }
-    }
-    for proc in process_list {
-        if let Some(traffic_info) = process_map.get(&proc.pid) {
-            processes.push(ProcessTrafficInfo {
-                process: proc,
-                traffic: traffic_info.clone(),
-            });
+    });
+    process_map.iter().for_each(|(pid, process)| {
+        match process_traffic_map.get(pid) {
+            Some(traffic) => {
+                processes.push(ProcessTrafficInfo {
+                    process: process.clone(),
+                    traffic: traffic.clone(),
+                });
+            }
+            None => {
+                processes.push(ProcessTrafficInfo {
+                    process: process.clone(),
+                    traffic: TrafficInfo::new(),
+                });
+            }
         }
-    }
+    });
     processes
 }
 
