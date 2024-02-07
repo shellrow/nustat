@@ -210,13 +210,6 @@ impl ProtocolPort {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct PortTrafficInfo {
-    pub port: u16,
-    pub protocol: TransportProtocol,
-    pub traffic_info: TrafficInfo,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct SocketInfoOption {
     pub address_family: Vec<AddressFamily>,
     pub transport_protocol: Vec<TransportProtocol>
