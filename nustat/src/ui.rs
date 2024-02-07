@@ -96,7 +96,6 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         //let mut table_state = TableState::default();
         let table = Table::new(rows, widths)
         .column_spacing(1)
-        //.style(Style::new().blue())
         .header(
             Row::new(vec!["IP Address", "ASN", "AS Name", "Country","↓ Bytes", "↑ Bytes"])
                 .style(Style::new().bold())
@@ -151,7 +150,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
         .highlight_symbol(">>");
         f.render_widget(table, inner_chunks[1]);
-        //f.render_stateful_widget(table, inner_chunks[1], &mut table_state);
+        //f.render_stateful_widget(table, inner_chunks[1], &mut app.talbe_state);
     }
 }
 
@@ -189,7 +188,8 @@ fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
     .highlight_style(Style::new().reversed())
     .highlight_symbol(">>");
 
-    f.render_widget(table, area);
+    //f.render_widget(table, area);
+    f.render_stateful_widget(table, area, &mut app.talbe_state);
 }
 
 fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
@@ -235,7 +235,8 @@ fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
     .block(Block::default().borders(Borders::ALL).title("Connections"))
     .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
     .highlight_symbol(">>");
-    f.render_widget(table, area);
+    //f.render_widget(table, area);
+    f.render_stateful_widget(table, area, &mut app.talbe_state);
 }
 
 fn draw_overview_tab(f: &mut Frame, app: &mut App, area: Rect) {

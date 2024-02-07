@@ -1,4 +1,5 @@
 use nustat_core::{net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData}, process::ProcessDisplayInfo, socket::SocketTrafficInfo};
+use ratatui::widgets::TableState;
 
 pub struct TabsState<'a> {
     pub titles: Vec<&'a str>,
@@ -26,6 +27,7 @@ pub struct App<'a> {
     pub title: &'a str,
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
+    pub talbe_state: TableState,
     pub netstat_data: NetStatData,
     pub remote_hosts: Vec<HostDisplayInfo>,
     pub processes: Vec<ProcessDisplayInfo>,
@@ -40,6 +42,7 @@ impl<'a> App<'a> {
             title,
             should_quit: false,
             tabs: TabsState::new(vec!["Overview", "RemoteAddresses", "Connections"]),
+            talbe_state: TableState::default(),
             netstat_data: NetStatData::new(),
             remote_hosts: vec![],
             processes: vec![],
@@ -50,18 +53,58 @@ impl<'a> App<'a> {
     }
 
     pub fn on_up(&mut self) {
-        
+        if self.tabs.index == 0 {
+            return;
+        }
+        // Select the previous row
+        let row_count = match self.tabs.index {
+            1 => self.remote_hosts.len(),
+            2 => self.connections.len(),
+            _ => 0,
+        };
+        let i = match self.talbe_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    row_count - 1
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.talbe_state.select(Some(i));
     }
 
     pub fn on_down(&mut self) {
-        
+        if self.tabs.index == 0 {
+            return;
+        }
+        // Select the next row
+        let row_count = match self.tabs.index {
+            1 => self.remote_hosts.len(),
+            2 => self.connections.len(),
+            _ => 0,
+        };
+        let i = match self.talbe_state.selected() {
+            Some(i) => {
+                if i >= row_count - 1 {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.talbe_state.select(Some(i));
     }
 
     pub fn on_right(&mut self) {
+        // Select the next tab
         self.tabs.next();
     }
 
     pub fn on_left(&mut self) {
+        // Select the previous tab
         self.tabs.previous();
     }
 
