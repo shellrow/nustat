@@ -27,10 +27,10 @@ pub struct App<'a> {
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
     pub netstat_data: NetStatData,
-    pub top_remote_hosts: Vec<HostDisplayInfo>,
-    pub top_processes: Vec<ProcessDisplayInfo>,
-    pub top_connections: Vec<SocketTrafficInfo>,
-    pub top_app_protocols: Vec<ServiceDisplayInfo>,
+    pub remote_hosts: Vec<HostDisplayInfo>,
+    pub processes: Vec<ProcessDisplayInfo>,
+    pub connections: Vec<SocketTrafficInfo>,
+    pub app_protocols: Vec<ServiceDisplayInfo>,
     pub enhanced_graphics: bool,
 }
 
@@ -39,12 +39,12 @@ impl<'a> App<'a> {
         App {
             title,
             should_quit: false,
-            tabs: TabsState::new(vec!["Dashboard", "RemoteAddresses", "Connections"]),
+            tabs: TabsState::new(vec!["Overview", "RemoteAddresses", "Connections"]),
             netstat_data: NetStatData::new(),
-            top_remote_hosts: vec![],
-            top_processes: vec![],
-            top_connections: vec![],
-            top_app_protocols: vec![],
+            remote_hosts: vec![],
+            processes: vec![],
+            connections: vec![],
+            app_protocols: vec![],
             enhanced_graphics,
         }
     }

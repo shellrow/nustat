@@ -17,13 +17,13 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .collect();
     let tabs = Tabs::new(titles)
         .block(Block::default().borders(Borders::ALL).title(app.title))
-        .highlight_style(Style::default().fg(Color::Yellow))
+        .highlight_style(Style::default().fg(Color::LightBlue))
         .select(app.tabs.index);
     f.render_widget(tabs, chunks[0]);
     match app.tabs.index {
-        0 => draw_first_tab(f, app, chunks[1]),
-        1 => draw_second_tab(f, app, chunks[1]),
-        2 => draw_third_tab(f, app, chunks[1]),
+        0 => draw_overview_tab(f, app, chunks[1]),
+        1 => draw_remotehosts_tab(f, app, chunks[1]),
+        2 => draw_connections_tab(f, app, chunks[1]),
         _ => {}
     };
 }
@@ -74,7 +74,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             .split(area_chunks[0]);
 
         // Draw top Remote Address Table        
-        let rows = app.top_remote_hosts.iter().map(|host| {
+        let rows = app.remote_hosts.iter().take(10).map(|host| {
             Row::new(vec![
                 host.ip_addr.to_string(),
                 host.asn.to_string(),
@@ -102,13 +102,13 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
                 .style(Style::new().bold())
                 //.bottom_margin(1),
         )
-        .block(Block::default().borders(Borders::ALL).title("Top Remote Address"))
+        .block(Block::default().borders(Borders::ALL).title("Top Remote Addresses"))
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
         f.render_widget(table, inner_chunks[0]);
         
-        let rows = app.top_connections.iter().map(|conn| {
+        let rows = app.connections.iter().take(10).map(|conn| {
             let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
                 remote_ip_addr.to_string()
             } else {"".to_string()};
@@ -133,7 +133,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
         }).collect::<Vec<Row>>();
         let widths = [
             Constraint::Length(20),
-            Constraint::Length(42),
+            Constraint::Length(45),
             Constraint::Length(8),
             Constraint::Length(8),
             Constraint::Length(8),
@@ -155,92 +155,90 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
     }
 }
 
-fn draw_text(f: &mut Frame, area: Rect) {
-    let text = vec![
-        text::Line::from("This is a paragraph with several lines. You can change style your text the way you want"),
-        text::Line::from(""),
-        text::Line::from(vec![
-            Span::from("For example: "),
-            Span::styled("under", Style::default().fg(Color::Red)),
-            Span::raw(" "),
-            Span::styled("the", Style::default().fg(Color::Green)),
-            Span::raw(" "),
-            Span::styled("rainbow", Style::default().fg(Color::Blue)),
-            Span::raw("."),
-        ]),
-        text::Line::from(vec![
-            Span::raw("Oh and if you didn't "),
-            Span::styled("notice", Style::default().add_modifier(Modifier::ITALIC)),
-            Span::raw(" you can "),
-            Span::styled("automatically", Style::default().add_modifier(Modifier::BOLD)),
-            Span::raw(" "),
-            Span::styled("wrap", Style::default().add_modifier(Modifier::REVERSED)),
-            Span::raw(" your "),
-            Span::styled("text", Style::default().add_modifier(Modifier::UNDERLINED)),
-            Span::raw(".")
-        ]),
-        text::Line::from(
-            "One more thing is that it should display unicode characters: 10€"
-        ),
+fn draw_remotehosts_table(f: &mut Frame, app: &mut App, area: Rect) {
+    // Draw top Remote Address Table        
+    let rows = app.remote_hosts.iter().map(|host| {
+        Row::new(vec![
+            host.ip_addr.to_string(),
+            host.asn.to_string(),
+            host.as_name.clone(),
+            host.country_code.clone(),
+            host.traffic.bytes_received.to_string(),
+            host.traffic.bytes_sent.to_string(),
+        ])
+    }).collect::<Vec<Row>>();
+    let widths = [
+        Constraint::Length(40),
+        Constraint::Length(8),
+        Constraint::Length(24),
+        Constraint::Length(8),
+        Constraint::Length(10),
+        Constraint::Length(10),
     ];
-    let block = Block::default().borders(Borders::ALL).title(Span::styled(
-        "Footer",
-        Style::default()
-            .fg(Color::Magenta)
-            .add_modifier(Modifier::BOLD),
-    ));
-    let paragraph = Paragraph::new(text).block(block).wrap(Wrap { trim: true });
-    f.render_widget(paragraph, area);
-}
 
-fn draw_color_table(f: &mut Frame, area: Rect) {
-    let chunks = Layout::default()
-        .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(100)])
-        .split(area);
-    let colors = [
-        Color::Reset,
-        Color::Black,
-        Color::Red,
-        Color::Green,
-        Color::Yellow,
-        Color::Blue,
-        Color::Magenta,
-        Color::Cyan,
-        Color::Gray,
-        Color::DarkGray,
-        Color::LightRed,
-        Color::LightGreen,
-        Color::LightYellow,
-        Color::LightBlue,
-        Color::LightMagenta,
-        Color::LightCyan,
-        Color::White,
-    ];
-    let items: Vec<Row> = colors
-        .iter()
-        .map(|c| {
-            let cells = vec![
-                Cell::from(Span::raw(format!("{c:?}: "))),
-                Cell::from(Span::styled("Foreground", Style::default().fg(*c))),
-                Cell::from(Span::styled("Background", Style::default().bg(*c))),
-            ];
-            Row::new(cells)
-        })
-        .collect();
-    let table = Table::new(
-        items,
-        [
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-            Constraint::Ratio(1, 3),
-        ],
+    //let mut table_state = TableState::default();
+    let table = Table::new(rows, widths)
+    .column_spacing(1)
+    //.style(Style::new().blue())
+    .header(
+        Row::new(vec!["IP Address", "ASN", "AS Name", "Country","↓ Bytes", "↑ Bytes"])
+            .style(Style::new().bold())
+            //.bottom_margin(1),
     )
-    .block(Block::default().title("Colors").borders(Borders::ALL));
-    f.render_widget(table, chunks[0]);
+    .block(Block::default().borders(Borders::ALL).title("Remote Addresses"))
+    .highlight_style(Style::new().reversed())
+    .highlight_symbol(">>");
+
+    f.render_widget(table, area);
 }
 
-fn draw_first_tab(f: &mut Frame, app: &mut App, area: Rect) {
+fn draw_connection_table(f: &mut Frame, app: &mut App, area: Rect) {
+    let rows = app.connections.iter().map(|conn| {
+        let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
+            remote_ip_addr.to_string()
+        } else {"".to_string()};
+        let remote_port_string = if let Some(remote_port) = &conn.remote_port {
+            remote_port.to_string()
+        } else {"".to_string()};
+        let mut process_id_string = "".to_string();
+        let mut process_name_string = "".to_string();
+        if let Some(process) = &conn.process {
+            process_id_string = process.pid.to_string();
+            process_name_string = process.name.clone();
+        }
+        Row::new(vec![
+            format!("{}:{}", conn.interface_name, conn.local_port.to_string()),
+            format!("{}:{}", remote_ip_string, remote_port_string),
+            conn.protocol.as_str().to_string(),
+            conn.traffic.bytes_received.to_string(),
+            conn.traffic.bytes_sent.to_string(),
+            process_id_string,
+            process_name_string,
+        ])
+    }).collect::<Vec<Row>>();
+    let widths = [
+        Constraint::Length(20),
+        Constraint::Length(45),
+        Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(8),
+        Constraint::Length(5),
+        Constraint::Length(20),
+    ];
+    let table = Table::new(rows, widths)
+    .column_spacing(1)
+    .header(
+        Row::new(vec!["Local Socket", "Remote Socket", "Protocol", "↓ Bytes", "↑ Bytes", "PID", "Process Name"])
+            .style(Style::new().bold())
+            //.bottom_margin(1),
+    )
+    .block(Block::default().borders(Borders::ALL).title("Connections"))
+    .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+    .highlight_symbol(">>");
+    f.render_widget(table, area);
+}
+
+fn draw_overview_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
         .constraints([
             Constraint::Length(4),
@@ -251,22 +249,16 @@ fn draw_first_tab(f: &mut Frame, app: &mut App, area: Rect) {
     draw_top_data(f, app, chunks[1]);
 }
 
-fn draw_second_tab(f: &mut Frame, _app: &mut App, area: Rect) {
+fn draw_remotehosts_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
-        .constraints(vec![
-            Constraint::Percentage(60), 
-            Constraint::Percentage(40)])
+        .constraints(vec![Constraint::Percentage(100)])
         .split(area);
-    draw_color_table(f, chunks[0]);
-    draw_text(f, chunks[1]);
+    draw_remotehosts_table(f, app, chunks[0]);
 }
 
-fn draw_third_tab(f: &mut Frame, _app: &mut App, area: Rect) {
+fn draw_connections_tab(f: &mut Frame, app: &mut App, area: Rect) {
     let chunks = Layout::default()
-        .constraints(vec![
-            Constraint::Percentage(60), 
-            Constraint::Percentage(40)])
+        .constraints(vec![Constraint::Percentage(100)])
         .split(area);
-    draw_color_table(f, chunks[0]);
-    draw_text(f, chunks[1]);
+    draw_connection_table(f, app, chunks[0]);
 }

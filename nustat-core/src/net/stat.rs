@@ -640,7 +640,7 @@ impl NetStatData {
         // Update local_ip_map
         self.local_ip_map = other.local_ip_map;
     }
-    pub fn get_top_remote_hosts(&self) -> Vec<HostDisplayInfo> {
+    pub fn get_remote_hosts(&self, limit: Option<usize>) -> Vec<HostDisplayInfo> {
         let mut host_traffic_map: HashMap<IpAddr, usize> = HashMap::new();
         self.remote_hosts.iter().for_each(|(_ip, host)| {
             match host_traffic_map.get(&host.ip_addr) {
@@ -657,8 +657,9 @@ impl NetStatData {
         });
         let mut host_traffic_vec: Vec<(&IpAddr, &usize)> = host_traffic_map.iter().collect();
         host_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
-        let mut top_remote_hosts: Vec<HostDisplayInfo> = Vec::new();
-        for (ip, _) in host_traffic_vec.iter().take(10) {
+        let mut remote_hosts: Vec<HostDisplayInfo> = Vec::new();
+        // limit : if limit is None, return all remote hosts.
+        for (ip, _) in host_traffic_vec.iter().take(limit.unwrap_or(host_traffic_vec.len())) {
             if let Some(host) = self.remote_hosts.get(ip) {
                 let host = HostDisplayInfo {
                     ip_addr: host.ip_addr,
@@ -669,13 +670,13 @@ impl NetStatData {
                     as_name: host.as_name.clone(),
                     traffic: host.traffic_info.clone(),
                 };
-                top_remote_hosts.push(host);
+                remote_hosts.push(host);
             }
         }
-        top_remote_hosts
+        remote_hosts
     }
 
-    pub fn get_top_processes(&self) -> Vec<ProcessDisplayInfo> {
+    pub fn get_processes(&self, limit: Option<usize>) -> Vec<ProcessDisplayInfo> {
         let mut process_traffic_map: HashMap<u32, TrafficInfo> = HashMap::new();
         let mut process_map: HashMap<u32, ProcessInfo> = HashMap::new();
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
@@ -711,7 +712,8 @@ impl NetStatData {
         process_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
         // Create top processes from process_total_traffic_vec
         let mut top_processes: Vec<ProcessDisplayInfo> = Vec::new();
-        for (pid, _) in process_total_traffic_vec.iter().take(10) {
+        // limit : if limit is None, return all processes.
+        for (pid, _) in process_total_traffic_vec.iter().take(limit.unwrap_or(process_total_traffic_vec.len())) {
             if let Some(traffic) = process_traffic_map.get(pid) {
                 if let Some(process) = process_map.get(pid) {
                     let process = ProcessDisplayInfo {
@@ -726,12 +728,13 @@ impl NetStatData {
         top_processes
     }
 
-    pub fn get_top_connections(&self) -> Vec<SocketTrafficInfo> {
+    pub fn get_connections(&self, limit: Option<usize>) -> Vec<SocketTrafficInfo> {
         let connection_total_traffic_map: HashMap<SocketConnection, usize> = self.connection_map.iter().map(|(conn, traffic)| (conn.clone(), traffic.total_bytes())).collect();
         let mut connection_total_traffic_vec: Vec<(&SocketConnection, &usize)> = connection_total_traffic_map.iter().collect();
         connection_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
         let mut top_connections: Vec<SocketTrafficInfo> = Vec::new();
-        for (conn, _) in connection_total_traffic_vec.iter().take(10) {
+        // limit : if limit is None, return all connections.
+        for (conn, _) in connection_total_traffic_vec.iter().take(limit.unwrap_or(connection_total_traffic_vec.len())) {
             // Get process info from local_socket_map
             let process: Option<ProcessInfo> = match self.local_socket_map.get(&LocalSocket {
                 interface_name: conn.interface_name.clone(),
@@ -763,7 +766,7 @@ impl NetStatData {
         top_connections
     }
 
-    pub fn get_top_app_protocols(&self) -> Vec<ServiceDisplayInfo> {
+    pub fn get_app_protocols(&self, limit: Option<usize>) -> Vec<ServiceDisplayInfo> {
         let service_db: ServiceDatabase = crate::db::service::ServiceDatabase::new();
         let mut protocol_port_map: HashMap<ProtocolPort, TrafficInfo> = HashMap::new();
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
@@ -786,7 +789,8 @@ impl NetStatData {
         let mut protocol_total_traffic_vec: Vec<(&ProtocolPort, &usize)> = protocol_total_traffic_map.iter().collect();
         protocol_total_traffic_vec.sort_by(|a, b| b.1.cmp(a.1));
         let mut top_app_protocols: Vec<ServiceDisplayInfo> = Vec::new();
-        for (protocol_port, _) in protocol_total_traffic_vec.iter().take(10) {
+        // limit : if limit is None, return all app protocols.
+        for (protocol_port, _) in protocol_total_traffic_vec.iter().take(limit.unwrap_or(protocol_total_traffic_vec.len())) {
             if let Some(traffic) = protocol_port_map.get(protocol_port) {
                 let service = ServiceDisplayInfo {
                     port: protocol_port.port,
@@ -825,11 +829,11 @@ impl NetStatData {
             }
         });
         // Get top remote hosts
-        overview.top_remote_hosts = self.get_top_remote_hosts();
+        overview.top_remote_hosts = self.get_remote_hosts(Some(10));
         // Get top processes
-        overview.top_processes = self.get_top_processes();
+        overview.top_processes = self.get_processes(Some(10));
         // Get top app protocols
-        overview.top_app_protocols = self.get_top_app_protocols();
+        overview.top_app_protocols = self.get_app_protocols(Some(10));
         overview
     }
 }

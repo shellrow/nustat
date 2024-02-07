@@ -10,7 +10,7 @@ use crossterm::{
 use ratatui::prelude::*;
 use std::sync::Arc;
 use nustat_core::net::stat::{NetStatStrage, NetStatData};
-use crate::{app::App, ui};
+use crate::{app::App, sys, ui};
 
 pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Arc<NetStatStrage>) -> Result<(), Box<dyn Error>> {
     // setup terminal
@@ -21,7 +21,8 @@ pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Ar
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new("nustat", enhanced_graphics);
+    let app_title: String = sys::get_app_title();
+    let app = App::new(&app_title, enhanced_graphics);
     let res = run_app(&mut terminal, app, tick_rate, netstat_strage);
 
     // restore terminal
@@ -53,9 +54,9 @@ fn run_app<B: Backend>(
         if data_last_tick.elapsed() >= Duration::from_millis(1000) {
             let diff_clone: NetStatData = netstat_strage.clone_data_and_reset();
             app.netstat_data.merge(diff_clone);
-            app.top_remote_hosts = app.netstat_data.get_top_remote_hosts();
+            app.remote_hosts = app.netstat_data.get_remote_hosts(None);
             //app.top_processes = app.netstat_data.get_top_processes();
-            app.top_connections = app.netstat_data.get_top_connections();
+            app.connections = app.netstat_data.get_connections(None);
             data_last_tick = Instant::now();
         }
 

@@ -1,6 +1,7 @@
 use std::{error::Error, time::Duration};
 use argh::FromArgs;
 
+mod sys;
 mod app;
 mod terminal;
 mod ui;
