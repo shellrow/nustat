@@ -187,9 +187,9 @@ pub fn start_capture(
         match rx.next() {
             Ok(packet) => {
                 let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun() {
+                if interface.is_tun() || interface.is_loopback() {
                     let payload_offset;
-                    if interface.is_loopback() {
+                    if cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback() {
                         payload_offset = 14;
                     } else {
                         payload_offset = 0;
@@ -254,9 +254,9 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
         match rx.next() {
             Ok(packet) => {
                 let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun() {
+                if interface.is_tun() || interface.is_loopback() {
                     let payload_offset;
-                    if interface.is_loopback() {
+                    if cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback() {
                         payload_offset = 14;
                     } else {
                         payload_offset = 0;
