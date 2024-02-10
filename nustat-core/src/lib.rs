@@ -7,3 +7,4 @@ pub mod dns;
 pub mod ipinfo;
 pub mod db;
 pub mod notification;
+pub mod github;

@@ -27,6 +27,9 @@ impl DbIpv4Info {
             None => None,
         }
     }
+    pub fn get_github_url(commit_hash: &str) -> String {
+        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, IPV4_INFO_BIN_NAME)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -47,6 +50,9 @@ impl DbIpv6Info {
             None => None,
         }
     }
+    pub fn get_github_url(commit_hash: &str) -> String {
+        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, IPV6_INFO_BIN_NAME)
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
@@ -64,6 +70,9 @@ impl Country {
             }
             None => None,
         }
+    }
+    pub fn get_github_url(commit_hash: &str) -> String {
+        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, COUNTRY_BIN_NAME)
     }
 }
 
@@ -89,6 +98,9 @@ impl AutonomousSystem {
             None => None,
         }
     }
+    pub fn get_github_url(commit_hash: &str) -> String {
+        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, AS_BIN_NAME)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +119,25 @@ impl IpDatabase {
             country_map: HashMap::new(),
             autonomous_map: HashMap::new(),
         }
+    }
+    pub fn check_db_files() -> Result<(), Box<dyn std::error::Error>> {
+        let ipv4_file_path: PathBuf = DbIpv4Info::bin_file_path().unwrap();
+        if !ipv4_file_path.exists() {
+            return Err("ipv4.bin file not found".into());
+        }
+        let ipv6_file_path: PathBuf = DbIpv6Info::bin_file_path().unwrap();
+        if !ipv6_file_path.exists() {
+            return Err("ipv6.bin file not found".into());
+        }
+        let country_file_path: PathBuf = Country::bin_file_path().unwrap();
+        if !country_file_path.exists() {
+            return Err("country.bin file not found".into());
+        }
+        let as_file_path: PathBuf = AutonomousSystem::bin_file_path().unwrap();
+        if !as_file_path.exists() {
+            return Err("as.bin file not found".into());
+        }
+        Ok(())
     }
     pub fn load() -> Result<IpDatabase, Box<dyn std::error::Error>> {
         let mut ip_db = IpDatabase::new();

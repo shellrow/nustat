@@ -6,3 +6,4 @@ pub mod stat;
 pub mod packet;
 pub mod ip;
 pub mod service;
+pub mod http;
