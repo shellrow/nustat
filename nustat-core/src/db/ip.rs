@@ -116,14 +116,14 @@ impl IpDatabase {
         ip_db.load_autonomous()?;
         Ok(ip_db)
     }
-    pub fn load_from_crate() -> Result<IpDatabase, Box<dyn std::error::Error>> {
+    /* pub fn load_from_crate() -> Result<IpDatabase, Box<dyn std::error::Error>> {
         let mut ip_db = IpDatabase::new();
         ip_db.load_ipv4_from_crate()?;
         ip_db.load_ipv6_from_crate()?;
         ip_db.load_country_from_crate()?;
         ip_db.load_autonomous_from_crate()?;
         Ok(ip_db)
-    }
+    } */
     pub fn load_ipv4(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = DbIpv4Info::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -137,7 +137,7 @@ impl IpDatabase {
         }
         Ok(())
     }
-    pub fn load_ipv4_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    /* pub fn load_ipv4_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let ipv4_info_vec: Vec<DbIpv4Info> = bincode::deserialize(nustat_db_ipv4::db::IPV4_INFO_BIN).unwrap();
         for ipv4_info in ipv4_info_vec {
             let asn_country = AsnCountry {
@@ -147,7 +147,7 @@ impl IpDatabase {
             self.ipv4_map.insert(ipv4_info.ip_from..=ipv4_info.ip_to, asn_country);
         }
         Ok(())
-    }
+    } */
     pub fn load_ipv6(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = DbIpv6Info::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -161,7 +161,7 @@ impl IpDatabase {
         }
         Ok(())
     }
-    pub fn load_ipv6_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    /* pub fn load_ipv6_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let ipv6_info_vec: Vec<DbIpv6Info> = bincode::deserialize(nustat_db_ipv6::db::IPV6_INFO_BIN).unwrap();
         for ipv6_info in ipv6_info_vec {
             let asn_country = AsnCountry {
@@ -171,7 +171,7 @@ impl IpDatabase {
             self.ipv6_map.insert(ipv6_info.ip_from..=ipv6_info.ip_to, asn_country);
         }
         Ok(())
-    }
+    } */
     pub fn load_country(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = Country::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -181,13 +181,13 @@ impl IpDatabase {
         }
         Ok(())
     }
-    pub fn load_country_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    /* pub fn load_country_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let country_vec: Vec<Country> = bincode::deserialize(nustat_db_country::db::COUNTRY_BIN).unwrap();
         for country in country_vec {
             self.country_map.insert(country.country_code, country.country_name);
         }
         Ok(())
-    }
+    } */
     pub fn load_autonomous(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = AutonomousSystem::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -197,13 +197,13 @@ impl IpDatabase {
         }
         Ok(())
     }
-    pub fn load_autonomous_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+    /* pub fn load_autonomous_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let autonomous_vec: Vec<AutonomousSystem> = bincode::deserialize(nustat_db_as::db::AS_BIN).unwrap();
         for autonomous in autonomous_vec {
             self.autonomous_map.insert(autonomous.asn, autonomous.as_name);
         }
         Ok(())
-    }
+    } */
     pub fn get_ipv4_info(&self, ip_addr: Ipv4Addr) -> Option<Ipv4Info> {
         match self.ipv4_map.get(&(ip_addr.into())) {
             Some(ipv4_info) => {
