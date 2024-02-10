@@ -4,8 +4,8 @@ use serde::{Serialize, Deserialize};
 
 use crate::{ipinfo::{Ipv4Info, Ipv6Info}, sys};
 
-pub const IPV4_INFO_BIN_NAME: &str = "ipv4_info.bin";
-pub const IPV6_INFO_BIN_NAME: &str = "ipv6_info.bin";
+pub const IPV4_INFO_BIN_NAME: &str = "ipv4.bin";
+pub const IPV6_INFO_BIN_NAME: &str = "ipv6.bin";
 pub const COUNTRY_BIN_NAME: &str = "country.bin";
 pub const AS_BIN_NAME: &str = "as.bin";
 
