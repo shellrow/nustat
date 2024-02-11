@@ -246,8 +246,14 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
     };
     let (mut _tx, mut rx) = match xenet::datalink::channel(&interface, config) {
         Ok(xenet::datalink::Channel::Ethernet(tx, rx)) => (tx, rx),
-        Ok(_) => panic!("Unknown channel type"),
-        Err(e) => panic!("Error happened {}", e),
+        Ok(_) => {
+            //eprintln!("Unknown channel type");
+            return;
+        },
+        Err(_e) => {
+            //eprintln!("Error happened {}", e);
+            return;
+        },
     };
     let start_time = Instant::now();
     loop {
