@@ -1,5 +1,5 @@
 use serde::{Serialize, Deserialize};
-use std::{error::Error, io::Write};
+use std::{error::Error, io::Write, path::PathBuf};
 use futures::stream::StreamExt;
 
 use crate::github::{RepositoryInfo, REPOSITORY_INFO_URL};
@@ -33,7 +33,7 @@ pub enum DownloadProgress {
     Downloaded(u64),
 }
 
-pub async fn download_file(url: String, save_file_path: String) -> Result<(), Box<dyn Error>> {
+pub async fn download_file(url: String, save_file_path: PathBuf) -> Result<(), Box<dyn Error>> {
     // Check and create download dir
     let file_path = std::path::Path::new(&save_file_path);
     if let Some(parent_dir) = file_path.parent() {
@@ -51,7 +51,7 @@ pub async fn download_file(url: String, save_file_path: String) -> Result<(), Bo
     Ok(())
 }
 
-pub async fn download_file_with_progress(url: String, save_file_path: String, progress_tx: tokio::sync::mpsc::Sender<DownloadProgress>) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_file_with_progress(url: String, save_file_path: PathBuf, progress_tx: tokio::sync::mpsc::Sender<DownloadProgress>) -> Result<(), Box<dyn std::error::Error>> {
     // Check and create download dir
     let file_path = std::path::Path::new(&save_file_path);
     if let Some(parent_dir) = file_path.parent() {

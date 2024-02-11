@@ -1,3 +1,6 @@
+use std::path::PathBuf;
+use nustat_core::db::ip::{AS_BIN_NAME, COUNTRY_BIN_NAME, IPV4_INFO_BIN_NAME, IPV6_INFO_BIN_NAME};
+
 // Download bin DB files from the internet and save them to the local file system
 fn main() {
     // tokio runtime
@@ -16,7 +19,7 @@ fn main() {
         }
 
         // Save file path is ./temp
-        let temp_dir = "./temp";
+        let temp_dir: PathBuf = PathBuf::from("./temp");
 
         // Download the latest ipv4 file
         let ipv4_db_url = nustat_core::db::ip::DbIpv4Info::get_github_url(&commit_hash);
@@ -24,7 +27,7 @@ fn main() {
         // create a channel for progress
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(100);
         // spawn a task to handle the progress
-        let save_file_path = format!("{}/{}", temp_dir, "ipv4.bin");
+        let save_file_path = temp_dir.join(IPV4_INFO_BIN_NAME);
         tokio::spawn(async move {
             let _ = nustat_core::net::http::download_file_with_progress(ipv4_db_url, save_file_path, progress_tx).await;
         });
@@ -36,7 +39,7 @@ fn main() {
         let ipv6_db_url = nustat_core::db::ip::DbIpv6Info::get_github_url(&commit_hash);
         println!("Downloading ipv6 db file from: {}", ipv6_db_url);
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(100);
-        let save_file_path = format!("{}/{}", temp_dir, "ipv6.bin");
+        let save_file_path = temp_dir.join(IPV6_INFO_BIN_NAME);
         tokio::spawn(async move {
             let _ = nustat_core::net::http::download_file_with_progress(ipv6_db_url, save_file_path, progress_tx).await;
         });
@@ -48,7 +51,7 @@ fn main() {
         let asn_db_url = nustat_core::db::ip::AutonomousSystem::get_github_url(&commit_hash);
         println!("Downloading asn db file from: {}", asn_db_url);
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(100);
-        let save_file_path = format!("{}/{}", temp_dir, "as.bin");
+        let save_file_path = temp_dir.join(AS_BIN_NAME);
         tokio::spawn(async move {
             let _ = nustat_core::net::http::download_file_with_progress(asn_db_url, save_file_path, progress_tx).await;
         });
@@ -60,7 +63,7 @@ fn main() {
         let country_db_url = nustat_core::db::ip::Country::get_github_url(&commit_hash);
         println!("Downloading country db file from: {}", country_db_url);
         let (progress_tx, mut progress_rx) = tokio::sync::mpsc::channel(100);
-        let save_file_path = format!("{}/{}", temp_dir, "country.bin");
+        let save_file_path = temp_dir.join(COUNTRY_BIN_NAME);
         tokio::spawn(async move {
             let _ = nustat_core::net::http::download_file_with_progress(country_db_url, save_file_path, progress_tx).await;
         });

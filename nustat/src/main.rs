@@ -1,29 +1,47 @@
-use std::{error::Error, time::Duration};
-use argh::FromArgs;
-
 mod sys;
 mod app;
 mod terminal;
 mod ui;
+mod handler;
 
 use std::sync::Arc;
 use std::thread;
+use std::{error::Error, time::Duration};
+use clap::{Arg, Command, ArgMatches};
+use clap::{crate_name, crate_version, crate_description, value_parser};
 use nustat_core::net::stat::NetStatStrage;
 
-/// Newtwork utilization statistics
-#[derive(Debug, FromArgs)]
-struct Cli {
-    /// time in ms between two ticks.
-    #[argh(option, default = "250")]
-    tick_rate: u64,
-    /// whether unicode symbols are used to improve the overall look of the app
-    #[argh(option, default = "false")]
-    enhanced_graphics: bool,
-}
-
 fn main() -> Result<(), Box<dyn Error>> {
-    let cli: Cli = argh::from_env();
-    let tick_rate = Duration::from_millis(cli.tick_rate);
+    // Parse command line arguments
+    let app: ArgMatches = get_app_settings();
+    // Check update
+    if let Some(update_app) = app.subcommand_matches("update") {
+        println!("Checking for updates...");
+        if update_app.contains_id("db") {
+            println!("Checking for DB file updates...");
+            handler::check_db_files()?;
+        }
+        return Ok(());
+    }
+
+    let tick_rate_ms: u64;
+    if app.contains_id("tick_rate") {
+        tick_rate_ms = *app.get_one("tick_rate").unwrap_or(&250);
+    } else {
+        tick_rate_ms = 250;
+    }
+    let tick_rate = Duration::from_millis(tick_rate_ms);
+    // Check .nustat directory
+    match nustat_core::sys::get_config_dir_path() {
+        Some(_config_dir) => {
+            // Check DB files
+            handler::check_db_files()?;
+        }
+        None => {
+            eprintln!("Error: Could not get config directory path");
+            return Ok(());
+        }
+    }
 
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
 
@@ -77,6 +95,36 @@ fn main() -> Result<(), Box<dyn Error>> {
         let _ = crate::terminal::run(tick_rate, cli.enhanced_graphics, &mut netstat_strage_ui);
     });
     threads.push(ui_handler); */
-    crate::terminal::run(tick_rate, cli.enhanced_graphics, &mut netstat_strage_ui)?;
+    crate::terminal::run(tick_rate, app.contains_id("enhanced_graphics"), &mut netstat_strage_ui)?;
     Ok(())
+}
+
+fn get_app_settings() -> ArgMatches {
+    let app: Command = Command::new(crate_name!())
+        .version(crate_version!())
+        .about(crate_description!())
+        .arg(Arg::new("tick_rate")
+            .help("Time in ms between two ticks")
+            .long("tick_rate")
+            .value_name("duration_ms")
+            .value_parser(value_parser!(u64))
+            .default_value("250")
+        )
+        .arg(Arg::new("enhanced_graphics")
+            .help("Whether unicode symbols are used to improve the overall look of the app")
+            .long("enhanced_graphics")
+            .num_args(0)
+        )
+        // Sub-command for update db files
+        .subcommand(Command::new("update")
+            .about("Check update. nustat update --help for more information")
+            .arg(Arg::new("db")
+                .help("Update the database files")
+                .long("db")
+                .required(false)
+                .num_args(0)
+            )
+        )
+        ;
+    app.get_matches()
 }
