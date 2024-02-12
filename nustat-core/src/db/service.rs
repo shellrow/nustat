@@ -1,5 +1,5 @@
 use std::{collections::HashMap, fs, path::PathBuf};
-
+use crate::thread_log;
 use serde::{Serialize, Deserialize};
 use nustat_db_service::TcpService;
 use nustat_db_service::db::TCP_SERVICE_BIN;
@@ -45,7 +45,7 @@ impl ServiceDatabase {
                 })
             }
             Err(e) => {
-                eprintln!("Error: {:?}", e);
+                thread_log!(error, "Error: {:?}", e);
                 Err(e)
             }
         }

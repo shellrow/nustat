@@ -8,3 +8,6 @@ pub mod ipinfo;
 pub mod db;
 pub mod notification;
 pub mod github;
+pub mod config;
+#[macro_use]
+pub mod log;

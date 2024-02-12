@@ -4,12 +4,17 @@ mod terminal;
 mod ui;
 mod handler;
 
+use std::fs::File;
+use std::path::Path;
 use std::sync::Arc;
 use std::thread;
 use std::{error::Error, time::Duration};
 use clap::{Arg, Command, ArgMatches};
 use clap::{crate_name, crate_version, crate_description, value_parser};
 use nustat_core::net::stat::NetStatStrage;
+use nustat_core::config::AppConfig;
+use nustat_core::thread_log;
+use simplelog::WriteLogger;
 
 fn main() -> Result<(), Box<dyn Error>> {
     // Parse command line arguments
@@ -43,11 +48,32 @@ fn main() -> Result<(), Box<dyn Error>> {
         }
     }
 
+    // Load AppConfig
+    let config = AppConfig::load();
+
+    // Init logger
+    let log_file_path = if let Some(file_path) = config.logging.file_path {
+        // Convert to PathBuf
+        Path::new(&file_path).to_path_buf()
+    } else {
+        nustat_core::sys::get_user_file_path(nustat_core::log::DEFAULT_LOG_FILE_PATH).unwrap()
+    };
+    let log_file: File = if log_file_path.exists() {
+        File::options().write(true).open(&log_file_path)?
+    } else {
+        File::create(&log_file_path)?
+    };
+    WriteLogger::init(
+        config.logging.level.to_level_filter(),
+        Default::default(),
+        log_file,
+    )?;
+
+    // Start threads
     let mut threads: Vec<thread::JoinHandle<()>> = vec![];
 
     let netstat_strage: Arc<NetStatStrage> = Arc::new(NetStatStrage::new());
     let mut netstat_strage_socket = Arc::clone(&netstat_strage);
-    //let mut netstat_strage_dns = Arc::clone(&netstat_strage);
     let mut netstat_strage_ui = Arc::clone(&netstat_strage);
 
     let usable_interfaces = nustat_core::net::interface::get_usable_interfaces();
@@ -74,23 +100,26 @@ fn main() -> Result<(), Box<dyn Error>> {
         nustat_core::socket::start_socket_info_update(&mut netstat_strage_socket);
     });
 
-    /* let dns_handler = thread::spawn(move || {
-        nustat_core::dns::start_dns_map_update(&mut netstat_strage_dns);
-    }); */
-
-    //threads.push(pcap_handler);
     for pcap_handler in pcap_handlers {
         match pcap_handler {
             Ok(handle) => {
                 threads.push(handle);
             }
-            Err(_e) => {
-                //eprintln!("Error: {:?}", e);
+            Err(e) => {
+                thread_log!(error, "Error: {:?}", e);
             }
         }
     }
     threads.push(socket_handler);
-    //threads.push(dns_handler);
+
+    if config.network.reverse_dns {
+        let mut netstat_strage_dns = Arc::clone(&netstat_strage);
+        let dns_handler = thread::spawn(move || {
+            nustat_core::dns::start_dns_map_update(&mut netstat_strage_dns);
+        });
+        threads.push(dns_handler);
+    }
+
     /* let ui_handler = thread::spawn(move || {
         let _ = crate::terminal::run(tick_rate, cli.enhanced_graphics, &mut netstat_strage_ui);
     });

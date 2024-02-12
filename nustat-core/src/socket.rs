@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 use xenet::packet::tcp::TcpFlags;
 use std::collections::{HashMap, HashSet};
 use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo};
+use crate::thread_log;
 use crate::net::stat::NetStatStrage;
 use crate::net::traffic::TrafficInfo;
 use crate::process;
@@ -338,7 +339,7 @@ pub fn start_socket_info_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 connections
             }
             Err(e) => {
-                eprintln!("[socket_info_update] lock error: {}", e);
+                thread_log!(error, "[socket_info_update] lock error: {}", e);
                 continue;
             }
         };

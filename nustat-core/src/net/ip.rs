@@ -1,8 +1,5 @@
-use default_net::mac::MacAddr;
-use netprobe::{neighbor::DeviceResolver, setting::ProbeSetting};
-use std::{collections::HashMap, net::{IpAddr, Ipv4Addr, Ipv6Addr}};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use xenet::net::ipnet::{Ipv4Net, Ipv6Net};
-use crate::net::interface;
 
 pub fn get_network_address(ip_addr: IpAddr) -> Result<String, String> {
     match ip_addr {
@@ -48,41 +45,6 @@ pub fn guess_initial_ttl(ttl: u8) -> u8 {
     } else {
         255
     }
-}
-
-pub fn get_mac_addresses(ips: Vec<IpAddr>, src_ip: IpAddr) -> HashMap<IpAddr, String> {
-    let mut map: HashMap<IpAddr, String> = HashMap::new();
-    if let Some(c_interface) = interface::get_interface_by_ip(src_ip) {
-        for ip in ips {
-            if ip == src_ip {
-                map.insert(
-                    ip,
-                    c_interface
-                        .clone()
-                        .mac_addr
-                        .unwrap_or(MacAddr::zero())
-                        .to_string(),
-                );
-                continue;
-            }
-            if !is_global_addr(ip) && in_same_network(src_ip, ip) {
-                let setting: ProbeSetting = match ip {
-                    IpAddr::V4(ipv4) => ProbeSetting::arp(c_interface.clone(), ipv4, 1).unwrap(),
-                    IpAddr::V6(ipv6) => ProbeSetting::ndp(c_interface.clone(), ipv6, 1).unwrap(),
-                };
-                let resolver: DeviceResolver = DeviceResolver::new(setting).unwrap();
-                match resolver.resolve() {
-                    Ok(result) => {
-                        if result.results.len() > 0 {
-                            map.insert(ip, result.results[0].mac_addr.address());
-                        }
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-    }
-    map
 }
 
 pub fn ipv4_to_int(ipv4: Ipv4Addr) -> u64 {

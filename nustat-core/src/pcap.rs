@@ -9,6 +9,7 @@ use xenet::packet::{ip::IpNextLevelProtocol, ethernet::EtherType};
 use xenet::net::interface::Interface;
 use xenet::packet::frame::Frame;
 use xenet::packet::frame::ParseOption;
+use crate::thread_log;
 use crate::net::interface;
 use crate::net::stat::NetStatStrage;
 use crate::sys;
@@ -160,12 +161,6 @@ pub fn start_capture(
     interface: Interface,
 ) -> CaptureReport {
     let mut report = CaptureReport::new();
-    /* let interfaces = xenet::net::interface::get_interfaces();
-    let interface = interfaces
-        .into_iter()
-        .filter(|interface: &Interface| interface.index == capture_options.interface_index)
-        .next()
-        .expect("Failed to get Interface"); */
     let config = xenet::datalink::Config {
         write_buffer_size: 4096,
         read_buffer_size: 4096,
@@ -178,8 +173,14 @@ pub fn start_capture(
     };
     let (mut _tx, mut rx) = match xenet::datalink::channel(&interface, config) {
         Ok(xenet::datalink::Channel::Ethernet(tx, rx)) => (tx, rx),
-        Ok(_) => panic!("Unknown channel type"),
-        Err(e) => panic!("Error happened {}", e),
+        Ok(_) => {
+            thread_log!(warn, "Unknown channel type");
+            return report;
+        },
+        Err(e) => {
+            thread_log!(error, "Error happened {}", e);
+            return report;
+        },
     };
     let start_time = Instant::now();
     report.start_time = sys::get_sysdate();
@@ -228,12 +229,6 @@ pub fn start_capture(
 }
 
 pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_strage: &mut Arc<NetStatStrage>, interface: Interface) {
-    /* let interfaces = xenet::net::interface::get_interfaces();
-    let interface = interfaces
-        .into_iter()
-        .filter(|interface: &Interface| interface.index == capture_options.interface_index)
-        .next()
-        .expect("Failed to get Interface"); */
     let config = xenet::datalink::Config {
         write_buffer_size: 4096,
         read_buffer_size: 4096,
@@ -247,11 +242,11 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
     let (mut _tx, mut rx) = match xenet::datalink::channel(&interface, config) {
         Ok(xenet::datalink::Channel::Ethernet(tx, rx)) => (tx, rx),
         Ok(_) => {
-            //eprintln!("Unknown channel type");
+            thread_log!(warn, "Unknown channel type");
             return;
         },
-        Err(_e) => {
-            //eprintln!("Error happened {}", e);
+        Err(e) => {
+            thread_log!(error, "Error happened {}", e);
             return;
         },
     };

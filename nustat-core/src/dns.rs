@@ -1,6 +1,7 @@
 use std::net::IpAddr;
 use std::time::Duration;
 use std::sync::Arc;
+use crate::thread_log;
 
 #[cfg(not(any(unix, target_os = "windows")))]
 use hickory_resolver::config::{ResolverConfig, ResolverOpts};
@@ -299,7 +300,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 remote_hosts
             }
             Err(e) => {
-                eprintln!("[dns_map_update] lock error: {}", e);
+                thread_log!(error, "[dns_map_update] lock error: {}", e);
                 continue;
             }
         };
@@ -309,7 +310,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 reverse_dns_map
             }
             Err(e) => {
-                eprintln!("[dns_map_update] lock error: {}", e);
+                thread_log!(error, "[dns_map_update] lock error: {}", e);
                 continue;
             }
         };
@@ -329,7 +330,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 remote_hosts
             }
             Err(e) => {
-                eprintln!("[dns_map_update] lock error: {}", e);
+                thread_log!(error, "[dns_map_update] lock error: {}", e);
                 continue;
             }
         };
@@ -339,7 +340,7 @@ pub fn start_dns_map_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 reverse_dns_map
             }
             Err(e) => {
-                eprintln!("[dns_map_update] lock error: {}", e);
+                thread_log!(error, "[dns_map_update] lock error: {}", e);
                 continue;
             }
         };

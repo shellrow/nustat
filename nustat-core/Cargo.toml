@@ -11,10 +11,11 @@ description = "Core library for nustat and nustat-desktop"
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
-#serde_json = "1.0"
+serde_json = "1.0"
+log = "0.4"
+simplelog = "0.12"
 default-net = { version = "0.21", features = ["serde"] }
 xenet = { version = "0.5", features = ["serde"] }
-netprobe = { version = "0.4", features = ["serde", "async"] }
 tokio = { version = "1.35" }
 hickory-resolver = { version = "0.24" }
 futures = {version = "0.3"}
@@ -23,8 +24,6 @@ netstat2 = "0.9"
 reqwest = { version="0.11", default-features = false, features = ["json", "rustls-tls", "stream"] }
 chrono = { version = "0.4", features = ["serde"] }
 ipnet = "2.5"
-#regex = "1.6"
-#rusqlite = { version = "0.30.0", features = ["bundled", "array"] }
 home = "0.5"
 bincode = "1.3"
 rangemap = "1.4"

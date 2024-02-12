@@ -1,6 +1,7 @@
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::sync::Arc;
 use serde::{Serialize, Deserialize};
+use crate::thread_log;
 
 use crate::db::ip::IpDatabase;
 use crate::net::stat::NetStatStrage;
@@ -43,7 +44,7 @@ pub fn start_ipinfo_update(netstat_strage: &mut Arc<NetStatStrage>) {
                 remote_hosts
             }
             Err(e) => {
-                eprintln!("[ipinfo_update] lock error: {}", e);
+                thread_log!(error, "[ipinfo_update] lock error: {}", e);
                 continue;
             }
         };

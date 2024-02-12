@@ -1,5 +1,5 @@
 use std::path::PathBuf;
-
+use crate::thread_log;
 pub const USER_CONFIG_DIR_NAME: &str = ".nustat";
 
 #[cfg(target_os = "windows")]
@@ -30,7 +30,7 @@ pub fn get_config_dir_path() -> Option<PathBuf> {
                 match std::fs::create_dir_all(&path) {
                     Ok(_) => {}
                     Err(e) => {
-                        eprintln!("Error: {:?}", e);
+                        thread_log!(error, "{:?}", e);
                         return None;
                     }
                 }

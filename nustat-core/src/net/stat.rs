@@ -1,6 +1,7 @@
 use default_net::{mac::MacAddr, Interface};
 use serde::{Serialize, Deserialize};
 use std::{collections::HashMap, net::IpAddr, sync::{Arc, Mutex}};
+use crate::thread_log;
 use super::{host::{HostDisplayInfo, RemoteHostInfo}, packet::PacketFrame, service::ServiceDisplayInfo, traffic::{Direction, TrafficInfo}};
 use super::interface;
 use crate::{db::ip::IpDatabase, notification::Notification, process::{ProcessDisplayInfo, ProcessInfo}, socket::{AddressFamily, LocalSocket, ProtocolPort, SocketConnection, SocketProcess, SocketTrafficInfo, TransportProtocol}};
@@ -29,7 +30,7 @@ impl NetStatStrage {
         let default_interface = match default_net::get_default_interface() {
             Ok(iface) => iface,
             Err(e) => {
-                eprintln!("NetStatStrage get_default_interface error: {:?}", e);
+                thread_log!(error, "NetStatStrage get_default_interface error: {:?}", e);
                 Interface::dummy()
             }
         };
@@ -52,7 +53,7 @@ impl NetStatStrage {
                 *iface = new_interface;
             }
             Err(e) => {
-                eprintln!("set_interface error: {:?}", e);
+                thread_log!(error, "set_interface error: {:?}", e);
             }
         }
     }
@@ -63,7 +64,7 @@ impl NetStatStrage {
                 iface.index
             }
             Err(e) => {
-                eprintln!("get_if_index error: {:?}", e);
+                thread_log!(error, "get_if_index error: {:?}", e);
                 0
             }
         }
@@ -75,7 +76,7 @@ impl NetStatStrage {
                 iface.name.clone()
             }
             Err(e) => {
-                eprintln!("get_if_name error: {:?}", e);
+                thread_log!(error, "get_if_name error: {:?}", e);
                 String::new()
             }
         }
@@ -87,7 +88,7 @@ impl NetStatStrage {
                 traffic.clone()
             }
             Err(e) => {
-                eprintln!("get_trrafic error: {:?}", e);
+                thread_log!(error, "get_trrafic error: {:?}", e);
                 TrafficInfo::new()
             }
         }
@@ -99,7 +100,7 @@ impl NetStatStrage {
                 remote_hosts.clone()
             }
             Err(e) => {
-                eprintln!("get_remote_hosts error: {:?}", e);
+                thread_log!(error, "get_remote_hosts error: {:?}", e);
                 HashMap::new()
             }
         }
@@ -111,7 +112,7 @@ impl NetStatStrage {
                 connection_map.clone()
             }
             Err(e) => {
-                eprintln!("get_connection_map error: {:?}", e);
+                thread_log!(error, "get_connection_map error: {:?}", e);
                 HashMap::new()
             }
         }
@@ -123,7 +124,7 @@ impl NetStatStrage {
                 local_socket_map.clone()
             }
             Err(e) => {
-                eprintln!("get_local_socket_map error: {:?}", e);
+                thread_log!(error, "get_local_socket_map error: {:?}", e);
                 HashMap::new()
             }
         }
@@ -134,7 +135,7 @@ impl NetStatStrage {
                 local_ip_map.clone()
             }
             Err(e) => {
-                eprintln!("get_local_ip_map error: {:?}", e);
+                thread_log!(error, "get_local_ip_map error: {:?}", e);
                 HashMap::new()
             }
         }
@@ -145,7 +146,7 @@ impl NetStatStrage {
                 *traffic = TrafficInfo::new();
             }
             Err(e) => {
-                eprintln!("clear_trraffic error: {:?}", e);
+                thread_log!(error, "clear_trraffic error: {:?}", e);
             }
         }
     }
@@ -155,7 +156,7 @@ impl NetStatStrage {
                 remote_hosts.clear();
             }
             Err(e) => {
-                eprintln!("clear_remote_hosts error: {:?}", e);
+                thread_log!(error, "clear_remote_hosts error: {:?}", e);
             }
         }
     }
@@ -165,7 +166,7 @@ impl NetStatStrage {
                 connection_map.clear();
             }
             Err(e) => {
-                eprintln!("clear_connection_map error: {:?}", e);
+                thread_log!(error, "clear_connection_map error: {:?}", e);
             }
         }
     }
@@ -175,7 +176,7 @@ impl NetStatStrage {
                 local_socket_map.clear();
             }
             Err(e) => {
-                eprintln!("clear_local_socket_map error: {:?}", e);
+                thread_log!(error, "clear_local_socket_map error: {:?}", e);
             }
         }
     }
@@ -185,7 +186,7 @@ impl NetStatStrage {
                 reverse_dns_map.clear();
             }
             Err(e) => {
-                eprintln!("clear_reverse_dns_map error: {:?}", e);
+                thread_log!(error, "clear_reverse_dns_map error: {:?}", e);
             }
         }
     }
@@ -247,7 +248,7 @@ impl NetStatStrage {
                 *ipdb_mutex = ipdb;
             }
             Err(e) => {
-                eprintln!("load_ipdb error: {:?}", e);
+                thread_log!(error, "load_ipdb error: {:?}", e);
             }
         }
     }
@@ -258,7 +259,7 @@ impl NetStatStrage {
                 *ipdb_mutex = ipdb;
             }
             Err(e) => {
-                eprintln!("load_ipdb_from_crate error: {:?}", e);
+                thread_log!(error, "load_ipdb_from_crate error: {:?}", e);
             }
         }
     }
@@ -266,7 +267,7 @@ impl NetStatStrage {
         let local_ip_map_inner = match self.local_ip_map.lock() {
             Ok(inner) => inner,
             Err(e) => {
-                eprintln!("Failed to lock local_ips: {:?}", e);
+                thread_log!(error, "Failed to lock local_ips: {:?}", e);
                 return;
             }
         };
@@ -275,7 +276,7 @@ impl NetStatStrage {
             Ok(inner) => inner,
             Err(e) => {
                 // Handle lock error (e.g., log and return or panic)
-                eprintln!("Failed to lock traffic: {:?}", e);
+                thread_log!(error, "Failed to lock traffic: {:?}", e);
                 return;
             }
         };
@@ -284,7 +285,7 @@ impl NetStatStrage {
             Ok(inner) => inner,
             Err(e) => {
                 // Handle lock error (e.g., log and return or panic)
-                eprintln!("Failed to lock remote_hosts: {:?}", e);
+                thread_log!(error, "Failed to lock remote_hosts: {:?}", e);
                 return;
             }
         };
@@ -293,7 +294,7 @@ impl NetStatStrage {
             Ok(inner) => inner,
             Err(e) => {
                 // Handle lock error (e.g., log and return or panic)
-                eprintln!("Failed to lock connection_map: {:?}", e);
+                thread_log!(error, "Failed to lock connection_map: {:?}", e);
                 return;
             }
         };
@@ -301,7 +302,7 @@ impl NetStatStrage {
         let ipdb_inner = match self.ipdb.lock() {
             Ok(inner) => inner,
             Err(e) => {
-                eprintln!("Failed to lock ipdb: {:?}", e);
+                thread_log!(error, "Failed to lock ipdb: {:?}", e);
                 return;
             }
         }; 
