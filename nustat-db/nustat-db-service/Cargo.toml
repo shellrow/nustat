@@ -11,3 +11,4 @@ description = "Custom tcp-service database crate for nustat, created using open 
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+home = "0.5"

@@ -11,3 +11,4 @@ description = "Custom Autonomous System (AS) database crate for nustat, created 
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+home = "0.5"

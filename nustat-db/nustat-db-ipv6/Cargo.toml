@@ -11,3 +11,4 @@ description = "Custom IPv4 database crate for nustat, created using open data so
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+home = "0.5"

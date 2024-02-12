@@ -1,29 +1,8 @@
 use std::{collections::HashMap, fs, path::PathBuf};
 
 use serde::{Serialize, Deserialize};
-
-use crate::sys;
-
-pub const TCP_SERVICE_BIN_NAME: &str = "tcp-service.bin";
-pub const TCP_SERVICE_BIN: &[u8] = include_bytes!("../../../nustat-db/nustat-db-service/resources/tcp-service.bin");
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct TcpService {
-    pub port: u16, 
-    pub service_name: String, 
-}
-
-impl TcpService {
-    pub fn bin_file_path() -> Option<PathBuf> {
-        match sys::get_config_dir_path() {
-            Some(mut path) => {
-                path.push(TCP_SERVICE_BIN_NAME);
-                Some(path)
-            }
-            None => None,
-        }
-    }
-}
+use nustat_db_service::TcpService;
+use nustat_db_service::db::TCP_SERVICE_BIN;
 
 pub fn get_bundled_tcp_service() -> HashMap<u16, String> {
     let mut tcp_map: HashMap<u16, String> = HashMap::new();

@@ -11,3 +11,4 @@ description = "Custom country database crate for nustat, created using open data
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
+home = "0.5"

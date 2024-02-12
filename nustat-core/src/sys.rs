@@ -40,3 +40,13 @@ pub fn get_config_dir_path() -> Option<PathBuf> {
         None => None,
     }
 }
+
+pub fn get_user_file_path(file_name: &str) -> Option<PathBuf> {
+    match get_config_dir_path() {
+        Some(mut path) => {
+            path.push(file_name);
+            Some(path)
+        }
+        None => None,
+    }
+}

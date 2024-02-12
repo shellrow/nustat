@@ -2,105 +2,25 @@ use std::{collections::HashMap, fs, net::{Ipv4Addr, Ipv6Addr}, path::PathBuf};
 use rangemap::RangeInclusiveMap;
 use serde::{Serialize, Deserialize};
 
-use crate::{ipinfo::{Ipv4Info, Ipv6Info}, sys};
+use crate::ipinfo::{Ipv4Info, Ipv6Info};
 
-pub const IPV4_INFO_BIN_NAME: &str = "ipv4.bin";
-pub const IPV6_INFO_BIN_NAME: &str = "ipv6.bin";
-pub const COUNTRY_BIN_NAME: &str = "country.bin";
-pub const AS_BIN_NAME: &str = "as.bin";
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct DbIpv4Info {
-    pub ip_from: u32,
-    pub ip_to: u32,
-    pub country_code: String,
-    pub asn: u32,
-}
-
-impl DbIpv4Info {
-    pub fn bin_file_path() -> Option<PathBuf> {
-        match sys::get_config_dir_path() {
-            Some(mut path) => {
-                path.push(IPV4_INFO_BIN_NAME);
-                Some(path)
-            }
-            None => None,
-        }
-    }
-    pub fn get_github_url(commit_hash: &str) -> String {
-        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, IPV4_INFO_BIN_NAME)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct DbIpv6Info {
-    pub ip_from: u128,
-    pub ip_to: u128,
-    pub country_code: String,
-    pub asn: u32,
-}
-
-impl DbIpv6Info {
-    pub fn bin_file_path() -> Option<PathBuf> {
-        match sys::get_config_dir_path() {
-            Some(mut path) => {
-                path.push(IPV6_INFO_BIN_NAME);
-                Some(path)
-            }
-            None => None,
-        }
-    }
-    pub fn get_github_url(commit_hash: &str) -> String {
-        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, IPV6_INFO_BIN_NAME)
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct Country {
-    pub country_code: String,
-    pub country_name: String,
-}
-
-impl Country {
-    pub fn bin_file_path() -> Option<PathBuf> {
-        match sys::get_config_dir_path() {
-            Some(mut path) => {
-                path.push(COUNTRY_BIN_NAME);
-                Some(path)
-            }
-            None => None,
-        }
-    }
-    pub fn get_github_url(commit_hash: &str) -> String {
-        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, COUNTRY_BIN_NAME)
-    }
-}
+pub use nustat_db_ipv4::Ipv4Info as DbIpv4Info;
+pub use nustat_db_ipv4::db::IPV4_INFO_BIN_NAME;
+use nustat_db_ipv4::db::IPV4_INFO_BIN;
+pub use nustat_db_ipv6::Ipv6Info as DbIpv6Info;
+pub use nustat_db_ipv6::db::IPV6_INFO_BIN_NAME;
+use nustat_db_ipv6::db::IPV6_INFO_BIN;
+pub use nustat_db_country::Country;
+pub use nustat_db_country::db::COUNTRY_BIN_NAME;
+use nustat_db_country::db::COUNTRY_BIN;
+pub use nustat_db_as::AutonomousSystem;
+pub use nustat_db_as::db::AS_BIN_NAME;
+use nustat_db_as::db::AS_BIN;
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AsnCountry {
     pub asn: u32,
     pub country_code: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct AutonomousSystem {
-    pub asn: u32,
-    pub as_name: String,
-}
-
-impl AutonomousSystem {
-    pub fn bin_file_path() -> Option<PathBuf> {
-        match sys::get_config_dir_path() {
-            Some(mut path) => {
-                path.push(AS_BIN_NAME);
-                Some(path)
-            }
-            None => None,
-        }
-    }
-    pub fn get_github_url(commit_hash: &str) -> String {
-        format!("{}/{}/resources/{}", crate::github::USER_CONTENT_BASE_URL, commit_hash, AS_BIN_NAME)
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,14 +67,14 @@ impl IpDatabase {
         ip_db.load_autonomous()?;
         Ok(ip_db)
     }
-    /* pub fn load_from_crate() -> Result<IpDatabase, Box<dyn std::error::Error>> {
+    pub fn load_from_crate() -> Result<IpDatabase, Box<dyn std::error::Error>> {
         let mut ip_db = IpDatabase::new();
         ip_db.load_ipv4_from_crate()?;
         ip_db.load_ipv6_from_crate()?;
         ip_db.load_country_from_crate()?;
         ip_db.load_autonomous_from_crate()?;
         Ok(ip_db)
-    } */
+    }
     pub fn load_ipv4(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = DbIpv4Info::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -168,8 +88,8 @@ impl IpDatabase {
         }
         Ok(())
     }
-    /* pub fn load_ipv4_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let ipv4_info_vec: Vec<DbIpv4Info> = bincode::deserialize(nustat_db_ipv4::db::IPV4_INFO_BIN).unwrap();
+    pub fn load_ipv4_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let ipv4_info_vec: Vec<DbIpv4Info> = bincode::deserialize(IPV4_INFO_BIN).unwrap();
         for ipv4_info in ipv4_info_vec {
             let asn_country = AsnCountry {
                 asn: ipv4_info.asn,
@@ -178,7 +98,7 @@ impl IpDatabase {
             self.ipv4_map.insert(ipv4_info.ip_from..=ipv4_info.ip_to, asn_country);
         }
         Ok(())
-    } */
+    }
     pub fn load_ipv6(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = DbIpv6Info::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -192,8 +112,8 @@ impl IpDatabase {
         }
         Ok(())
     }
-    /* pub fn load_ipv6_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let ipv6_info_vec: Vec<DbIpv6Info> = bincode::deserialize(nustat_db_ipv6::db::IPV6_INFO_BIN).unwrap();
+    pub fn load_ipv6_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let ipv6_info_vec: Vec<DbIpv6Info> = bincode::deserialize(IPV6_INFO_BIN).unwrap();
         for ipv6_info in ipv6_info_vec {
             let asn_country = AsnCountry {
                 asn: ipv6_info.asn,
@@ -202,7 +122,7 @@ impl IpDatabase {
             self.ipv6_map.insert(ipv6_info.ip_from..=ipv6_info.ip_to, asn_country);
         }
         Ok(())
-    } */
+    }
     pub fn load_country(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = Country::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -212,13 +132,13 @@ impl IpDatabase {
         }
         Ok(())
     }
-    /* pub fn load_country_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let country_vec: Vec<Country> = bincode::deserialize(nustat_db_country::db::COUNTRY_BIN).unwrap();
+    pub fn load_country_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let country_vec: Vec<Country> = bincode::deserialize(COUNTRY_BIN).unwrap();
         for country in country_vec {
             self.country_map.insert(country.country_code, country.country_name);
         }
         Ok(())
-    } */
+    }
     pub fn load_autonomous(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         let file_path: PathBuf = AutonomousSystem::bin_file_path().unwrap();
         let f  = fs::read(file_path).unwrap();
@@ -228,13 +148,13 @@ impl IpDatabase {
         }
         Ok(())
     }
-    /* pub fn load_autonomous_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
-        let autonomous_vec: Vec<AutonomousSystem> = bincode::deserialize(nustat_db_as::db::AS_BIN).unwrap();
+    pub fn load_autonomous_from_crate(&mut self) -> Result<(), Box<dyn std::error::Error>> {
+        let autonomous_vec: Vec<AutonomousSystem> = bincode::deserialize(AS_BIN).unwrap();
         for autonomous in autonomous_vec {
             self.autonomous_map.insert(autonomous.asn, autonomous.as_name);
         }
         Ok(())
-    } */
+    }
     pub fn get_ipv4_info(&self, ip_addr: Ipv4Addr) -> Option<Ipv4Info> {
         match self.ipv4_map.get(&(ip_addr.into())) {
             Some(ipv4_info) => {
