@@ -4,4 +4,9 @@ members = [
     "nustat-core",
     "nustat",
     "nustat-desktop/src-tauri",
+    "nustat-db/nustat-db-ipv4",
+    "nustat-db/nustat-db-ipv6",
+    "nustat-db/nustat-db-as",
+    "nustat-db/nustat-db-country",
+    "nustat-db/nustat-db-service",
 ]
