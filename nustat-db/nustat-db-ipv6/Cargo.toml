@@ -7,7 +7,7 @@ repository = "https://github.com/shellrow/nustat"
 documentation = "https://github.com/shellrow/nustat"
 readme = "README.md"
 license = "MIT"
-description = "Custom IPv4 database crate for nustat, created using open data sources."
+description = "Custom IPv6 database crate for nustat, created using open data sources."
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"] }
