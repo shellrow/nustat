@@ -1,12 +1,14 @@
 # nustat
 Cross-platform Network Utilization Statistics tool in Rust 
 
+## Development
+This project is currently under active development
+
 ## Overview
 nustat is a set of utilities for monitoring and analyzing network utilization. 
 It provides both a command-line interface (nustat) and a desktop application (nustat-desktop).
 
 ## Features
-
 - [x] Real-time network utilization statistics
 - [x] Monitoring of remote hosts with country and ASN information
 - [x] Socket status information
