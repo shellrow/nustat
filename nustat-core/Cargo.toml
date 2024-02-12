@@ -13,7 +13,7 @@ description = "Core library for nustat and nustat-desktop"
 serde = { version = "1.0", features = ["derive"] }
 #serde_json = "1.0"
 default-net = { version = "0.21", features = ["serde"] }
-xenet = { version = "0.4", features = ["serde"] }
+xenet = { version = "0.5", features = ["serde"] }
 netprobe = { version = "0.4", features = ["serde", "async"] }
 tokio = { version = "1.35" }
 hickory-resolver = { version = "0.24" }

@@ -187,9 +187,9 @@ pub fn start_capture(
         match rx.next() {
             Ok(packet) => {
                 let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun() || interface.is_loopback() {
+                if interface.is_tun() || (cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback()) {
                     let payload_offset;
-                    if cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback() {
+                    if interface.is_loopback() {
                         payload_offset = 14;
                     } else {
                         payload_offset = 0;
@@ -260,9 +260,9 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
         match rx.next() {
             Ok(packet) => {
                 let mut parse_option: ParseOption = ParseOption::default();
-                if interface.is_tun() || interface.is_loopback() {
+                if interface.is_tun() || (cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback()) {
                     let payload_offset;
-                    if cfg!(any(target_os = "macos", target_os = "ios")) && interface.is_loopback() {
+                    if interface.is_loopback() {
                         payload_offset = 14;
                     } else {
                         payload_offset = 0;
@@ -273,9 +273,9 @@ pub fn start_background_capture(capture_options: PacketCaptureOptions, netstat_s
                 let frame: Frame = Frame::from_bytes(&packet, parse_option);
                 if filter_packet(&frame, &capture_options) {
                     let packet_frame = PacketFrame::from_xenet_frame(0,interface.index, interface.name.clone(), frame);
-                    if netstat_strage.interface_changed(interface.index) {
+                    /* if netstat_strage.interface_changed(interface.index) {
                         netstat_strage.change_interface(&interface);
-                    }
+                    } */
                     netstat_strage.update(packet_frame);
                 }
             }
