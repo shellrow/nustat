@@ -35,7 +35,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     match nustat_core::sys::get_config_dir_path() {
         Some(_config_dir) => {
             // Check DB files
-            handler::check_db_files()?;
+            //handler::check_db_files()?;
         }
         None => {
             eprintln!("Error: Could not get config directory path");
@@ -61,7 +61,7 @@ fn main() -> Result<(), Box<dyn Error>> {
             let pcap_thread = thread::Builder::new().name(format!("pcap-thread-{}", iface.name.clone()));
             let pcap_handler = pcap_thread.spawn(move || {
                 if pcap_thread_index == 0 {
-                    netstat_strage_pcap.load_ipdb();
+                    netstat_strage_pcap.load_ipdb_from_crate();
                 }
                 nustat_core::pcap::start_background_capture(pcap_option, &mut netstat_strage_pcap, iface);
             });

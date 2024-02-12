@@ -251,7 +251,7 @@ impl NetStatStrage {
             }
         }
     }
-    /* pub fn load_ipdb_from_crate(&self) {
+    pub fn load_ipdb_from_crate(&self) {
         match IpDatabase::load_from_crate() {
             Ok(ipdb) => {
                 let mut ipdb_mutex = self.ipdb.lock().unwrap();
@@ -261,7 +261,7 @@ impl NetStatStrage {
                 eprintln!("load_ipdb_from_crate error: {:?}", e);
             }
         }
-    } */
+    }
     pub fn update(&self, frame: PacketFrame) {
         let local_ip_map_inner = match self.local_ip_map.lock() {
             Ok(inner) => inner,

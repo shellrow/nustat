@@ -10,7 +10,8 @@ fn main() {
 
     // Collect JoinHandles for threads
     let pcap_handle = thread::spawn(move || {
-        netstat_strage_pcap.load_ipdb();
+        //netstat_strage_pcap.load_ipdb();
+        netstat_strage_pcap.load_ipdb_from_crate();
         println!("[start] background_capture");
         match default_net::get_default_interface() {
             Ok(iface) => {

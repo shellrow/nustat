@@ -15,7 +15,7 @@ pub fn start_background_task(handle: &tauri::AppHandle) {
     // For IP Info update
     //let mut netstat_strage_ipinfo = Arc::clone(&netstat_strage);
     thread::spawn(move || {
-        netstat_strage_pcap.load_ipdb();
+        netstat_strage_pcap.load_ipdb_from_crate();
         println!("[start] background_capture");
         match default_net::get_default_interface() {
             Ok(iface) => {
