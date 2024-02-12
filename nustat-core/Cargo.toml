@@ -28,11 +28,11 @@ ipnet = "2.5"
 home = "0.5"
 bincode = "1.3"
 rangemap = "1.4"
-#nustat-db-ipv4 = { path = "../nustat-db/nustat-db-ipv4" }
-#nustat-db-ipv6 = { path = "../nustat-db/nustat-db-ipv6" }
-#nustat-db-as = { path = "../nustat-db/nustat-db-as" }
-#nustat-db-country = { path = "../nustat-db/nustat-db-country" }
-#nustat-db-service = { path = "../nustat-db/nustat-db-service" }
+nustat-db-ipv4 = { path = "../nustat-db/nustat-db-ipv4", version = "0.1.0" }
+nustat-db-ipv6 = { path = "../nustat-db/nustat-db-ipv6", version = "0.1.0" }
+nustat-db-as = { path = "../nustat-db/nustat-db-as", version = "0.1.0" }
+nustat-db-country = { path = "../nustat-db/nustat-db-country", version = "0.1.0" }
+nustat-db-service = { path = "../nustat-db/nustat-db-service", version = "0.1.0" }
 
 [[example]]
 name = "parse_frame"
