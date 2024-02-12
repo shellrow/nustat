@@ -36,10 +36,10 @@ fn draw_summary(f: &mut Frame, app: &mut App, area: Rect) {
         //.margin(1)
         .split(area);
     let text1 = vec![
-        text::Line::from(format!("Name: {}", app.netstat_data.if_name)),
         text::Line::from(format!("Index: {}", app.netstat_data.if_index)),
+        text::Line::from(format!("Name: {}", app.netstat_data.if_name)),
     ];
-    let block1 = Block::default().borders(Borders::ALL).title("Network Interface");
+    let block1 = Block::default().borders(Borders::ALL).title("Default Network Interface");
     let paragraph1 = Paragraph::new(text1).block(block1).wrap(Wrap { trim: true });
     f.render_widget(paragraph1, chunks[0]);
 
