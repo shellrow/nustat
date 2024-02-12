@@ -1,4 +1,4 @@
-# [WIP] nustat
+# nustat
 Cross-platform Network Utilization Statistics tool in Rust 
 
 ## Overview
@@ -7,12 +7,12 @@ It provides both a command-line interface (nustat) and a desktop application (nu
 
 ## Features
 
-- Real-time network utilization statistics
-- Monitoring of remote hosts with country and ASN information
-- Socket status information
-- Packet capture capabilities
-- User-specified remote host monitoring
-- Cross-platform support
+- [x] Real-time network utilization statistics
+- [x] Monitoring of remote hosts with country and ASN information
+- [x] Socket status information
+- [x] Packet capture capabilities
+- [ ] User-specified remote host monitoring
+- [x] Cross-platform support
 
 - CLI: `nustat` command with various options for network monitoring tasks.
 - Desktop: Interactive and user-friendly graphical interface for comprehensive network analysis.
@@ -21,5 +21,5 @@ It provides both a command-line interface (nustat) and a desktop application (nu
 ### nustat
 - cargo: `cargo install nustat`
 - pre-built binaries: Download the pre-built binaries for your platform from the releases page.
-### nustat-desktop
+### [WIP] nustat-desktop
 - Download the installer for your platform from the releases page.
