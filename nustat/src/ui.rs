@@ -16,7 +16,7 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .map(|t| text::Line::from(Span::styled(*t, Style::default().fg(Color::Green))))
         .collect();
     let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title(app.title.clone()))
+        .block(Block::default().borders(Borders::ALL).title(app.get_title()))
         .highlight_style(Style::default().fg(Color::LightBlue))
         .select(app.tabs.index);
     f.render_widget(tabs, chunks[0]);

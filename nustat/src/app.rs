@@ -24,7 +24,7 @@ impl<'a> TabsState<'a> {
 }
 
 pub struct App<'a> {
-    pub title: String,
+    pub title: &'a str,
     pub should_pause: bool,
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
@@ -39,7 +39,7 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(title: String, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
+    pub fn new(title:&'a str, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
         App {
             title,
             should_pause: false,
@@ -53,6 +53,14 @@ impl<'a> App<'a> {
             app_protocols: vec![],
             enhanced_graphics: enhanced_graphics,
             config: config,
+        }
+    }
+
+    pub fn get_title(&self) -> String {
+        if self.should_pause {
+            format!("{} (Paused)", self.title)
+        } else {
+            self.title.to_string()
         }
     }
 
@@ -121,11 +129,6 @@ impl<'a> App<'a> {
             ' ' => {
                 // Pause the application
                 self.should_pause = !self.should_pause;
-                if self.should_pause {
-                    self.title = format!("{} (Paused)", crate::sys::get_app_title());
-                } else {
-                    self.title = crate::sys::get_app_title();
-                }
             }
             't' => {
                 // TODO!

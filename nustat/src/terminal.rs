@@ -21,7 +21,8 @@ pub fn run(app_config: AppConfig, enhanced_graphics: bool, netstat_strage: &mut 
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app = App::new(sys::get_app_title(), enhanced_graphics, app_config);
+    let title = sys::get_app_title();
+    let app = App::new(&title, enhanced_graphics, app_config);
     let res = run_app(&mut terminal, app, netstat_strage);
 
     // restore terminal
