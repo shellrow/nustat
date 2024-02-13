@@ -122,8 +122,11 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn on_tick(&mut self) {
+    pub fn on_tick(&mut self, netstat_data: NetStatData) {
         // Update the state of the application
-        // TODO!
+        self.netstat_data.merge(netstat_data);
+        self.remote_hosts = self.netstat_data.get_remote_hosts(None);
+        //self.top_processes = app.netstat_data.get_top_processes();
+        self.connections = self.netstat_data.get_connections(None);
     }
 }

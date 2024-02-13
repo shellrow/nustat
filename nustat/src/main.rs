@@ -134,7 +134,6 @@ fn get_app_settings() -> ArgMatches {
             .long("tick_rate")
             .value_name("duration_ms")
             .value_parser(value_parser!(u64))
-            .default_value("250")
         )
         .arg(Arg::new("enhanced_graphics")
             .help("Whether unicode symbols are used to improve the overall look of the app")

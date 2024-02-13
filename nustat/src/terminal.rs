@@ -9,7 +9,7 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 use std::sync::Arc;
-use nustat_core::{config::AppConfig, net::stat::{NetStatData, NetStatStrage}};
+use nustat_core::{config::AppConfig, net::stat::NetStatStrage};
 use crate::{app::App, sys, ui};
 
 pub fn run(app_config: AppConfig, enhanced_graphics: bool, netstat_strage: &mut Arc<NetStatStrage>) -> Result<(), Box<dyn Error>> {
@@ -48,16 +48,11 @@ fn run_app<B: Backend>(
 ) -> io::Result<()> {
     let tick_rate = Duration::from_millis(app.config.display.tick_rate);
     let mut last_tick = Instant::now();
-    let mut data_last_tick = Instant::now();
     loop {
 
-        if data_last_tick.elapsed() >= Duration::from_millis(1000) {
-            let diff_clone: NetStatData = netstat_strage.clone_data_and_reset();
-            app.netstat_data.merge(diff_clone);
-            app.remote_hosts = app.netstat_data.get_remote_hosts(None);
-            //app.top_processes = app.netstat_data.get_top_processes();
-            app.connections = app.netstat_data.get_connections(None);
-            data_last_tick = Instant::now();
+        if last_tick.elapsed() >= tick_rate {
+            app.on_tick(netstat_strage.clone_data_and_reset());
+            last_tick = Instant::now();
         }
 
         terminal.draw(|f| ui::draw(f, &mut app))?;
@@ -77,10 +72,7 @@ fn run_app<B: Backend>(
                 }
             }
         }
-        if last_tick.elapsed() >= tick_rate {
-            app.on_tick();
-            last_tick = Instant::now();
-        }
+        
         if app.should_quit {
             return Ok(());
         }
