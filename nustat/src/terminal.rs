@@ -21,8 +21,7 @@ pub fn run(app_config: AppConfig, enhanced_graphics: bool, netstat_strage: &mut 
     let mut terminal = Terminal::new(backend)?;
 
     // create app and run it
-    let app_title: String = sys::get_app_title();
-    let app = App::new(&app_title, enhanced_graphics, app_config);
+    let app = App::new(sys::get_app_title(), enhanced_graphics, app_config);
     let res = run_app(&mut terminal, app, netstat_strage);
 
     // restore terminal
@@ -51,7 +50,9 @@ fn run_app<B: Backend>(
     loop {
 
         if last_tick.elapsed() >= tick_rate {
-            app.on_tick(netstat_strage.clone_data_and_reset());
+            if !app.should_pause {
+                app.on_tick(netstat_strage.clone_data_and_reset());
+            }
             last_tick = Instant::now();
         }
 

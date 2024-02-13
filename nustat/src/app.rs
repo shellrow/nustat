@@ -24,7 +24,8 @@ impl<'a> TabsState<'a> {
 }
 
 pub struct App<'a> {
-    pub title: &'a str,
+    pub title: String,
+    pub should_pause: bool,
     pub should_quit: bool,
     pub tabs: TabsState<'a>,
     pub talbe_state: TableState,
@@ -38,9 +39,10 @@ pub struct App<'a> {
 }
 
 impl<'a> App<'a> {
-    pub fn new(title: &'a str, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
+    pub fn new(title: String, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
         App {
             title,
+            should_pause: false,
             should_quit: false,
             tabs: TabsState::new(vec!["Overview", "RemoteAddresses", "Connections"]),
             talbe_state: TableState::default(),
@@ -113,7 +115,17 @@ impl<'a> App<'a> {
     pub fn on_key(&mut self, c: char) {
         match c {
             'q' => {
+                // Quit the application
                 self.should_quit = true;
+            }
+            ' ' => {
+                // Pause the application
+                self.should_pause = !self.should_pause;
+                if self.should_pause {
+                    self.title = format!("{} (Paused)", crate::sys::get_app_title());
+                } else {
+                    self.title = crate::sys::get_app_title();
+                }
             }
             't' => {
                 // TODO!
