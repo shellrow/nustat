@@ -1,4 +1,4 @@
-use nustat_core::{net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData}, process::ProcessDisplayInfo, socket::SocketTrafficInfo};
+use nustat_core::{config::AppConfig, net::{host::HostDisplayInfo, service::ServiceDisplayInfo, stat::NetStatData}, process::ProcessDisplayInfo, socket::SocketTrafficInfo};
 use ratatui::widgets::TableState;
 
 pub struct TabsState<'a> {
@@ -34,10 +34,11 @@ pub struct App<'a> {
     pub connections: Vec<SocketTrafficInfo>,
     pub app_protocols: Vec<ServiceDisplayInfo>,
     pub enhanced_graphics: bool,
+    pub config: AppConfig,
 }
 
 impl<'a> App<'a> {
-    pub fn new(title: &'a str, enhanced_graphics: bool) -> App<'a> {
+    pub fn new(title: &'a str, enhanced_graphics: bool, config: AppConfig) -> App<'a> {
         App {
             title,
             should_quit: false,
@@ -48,7 +49,8 @@ impl<'a> App<'a> {
             processes: vec![],
             connections: vec![],
             app_protocols: vec![],
-            enhanced_graphics,
+            enhanced_graphics: enhanced_graphics,
+            config: config,
         }
     }
 

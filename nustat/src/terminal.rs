@@ -9,10 +9,10 @@ use crossterm::{
 };
 use ratatui::prelude::*;
 use std::sync::Arc;
-use nustat_core::net::stat::{NetStatStrage, NetStatData};
+use nustat_core::{config::AppConfig, net::stat::{NetStatData, NetStatStrage}};
 use crate::{app::App, sys, ui};
 
-pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Arc<NetStatStrage>) -> Result<(), Box<dyn Error>> {
+pub fn run(app_config: AppConfig, enhanced_graphics: bool, netstat_strage: &mut Arc<NetStatStrage>) -> Result<(), Box<dyn Error>> {
     // setup terminal
     enable_raw_mode()?;
     let mut stdout = io::stdout();
@@ -22,8 +22,8 @@ pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Ar
 
     // create app and run it
     let app_title: String = sys::get_app_title();
-    let app = App::new(&app_title, enhanced_graphics);
-    let res = run_app(&mut terminal, app, tick_rate, netstat_strage);
+    let app = App::new(&app_title, enhanced_graphics, app_config);
+    let res = run_app(&mut terminal, app, netstat_strage);
 
     // restore terminal
     disable_raw_mode()?;
@@ -44,9 +44,9 @@ pub fn run(tick_rate: Duration, enhanced_graphics: bool, netstat_strage: &mut Ar
 fn run_app<B: Backend>(
     terminal: &mut Terminal<B>,
     mut app: App,
-    tick_rate: Duration,
     netstat_strage: &mut Arc<NetStatStrage>
 ) -> io::Result<()> {
+    let tick_rate = Duration::from_millis(app.config.display.tick_rate);
     let mut last_tick = Instant::now();
     let mut data_last_tick = Instant::now();
     loop {

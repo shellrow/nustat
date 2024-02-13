@@ -11,6 +11,8 @@ pub struct AppConfig {
     pub logging: LoggingConfig,
     /// Network configuration.
     pub network: NetworkConfig,
+    /// Display configuration.
+    pub display: DisplayConfig,
 }
 
 impl AppConfig {
@@ -18,6 +20,7 @@ impl AppConfig {
         AppConfig {
             logging: LoggingConfig::new(),
             network: NetworkConfig::new(),
+            display: DisplayConfig::new(),
         }
     }
     pub fn load() -> AppConfig {
@@ -103,6 +106,27 @@ impl NetworkConfig {
         NetworkConfig {
             interfaces: Vec::new(),
             reverse_dns: false,
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DisplayConfig {
+    /// The number of top remote hosts to display in the Overview tab.
+    pub top_remote_hosts: usize,
+    /// The number of connections to display in the Overview tab.
+    pub connection_count: usize,
+    /// The tick rate in milliseconds. Default is 1000.
+    /// This is the default rate at which the UI will update.
+    pub tick_rate: u64,
+}
+
+impl DisplayConfig {
+    pub fn new() -> DisplayConfig {
+        DisplayConfig {
+            top_remote_hosts: 10,
+            connection_count: 10,
+            tick_rate: 1000,
         }
     }
 }

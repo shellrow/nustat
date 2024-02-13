@@ -74,7 +74,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
             .split(area_chunks[0]);
 
         // Draw top Remote Address Table        
-        let rows = app.remote_hosts.iter().take(10).map(|host| {
+        let rows = app.remote_hosts.iter().take(app.config.display.top_remote_hosts).map(|host| {
             Row::new(vec![
                 host.ip_addr.to_string(),
                 host.asn.to_string(),
@@ -107,7 +107,7 @@ fn draw_top_data(f: &mut Frame, app: &mut App, area: Rect) {
 
         f.render_widget(table, inner_chunks[0]);
         
-        let rows = app.connections.iter().take(10).map(|conn| {
+        let rows = app.connections.iter().take(app.config.display.connection_count).map(|conn| {
             let remote_ip_string = if let Some(remote_ip_addr) = &conn.remote_ip_addr {
                 remote_ip_addr.to_string()
             } else {"".to_string()};
