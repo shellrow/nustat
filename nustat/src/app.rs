@@ -56,14 +56,6 @@ impl<'a> App<'a> {
         }
     }
 
-    pub fn get_title(&self) -> String {
-        if self.should_pause {
-            format!("{} (Paused)", self.title)
-        } else {
-            self.title.to_string()
-        }
-    }
-
     pub fn on_up(&mut self) {
         if self.tabs.index == 0 {
             return;

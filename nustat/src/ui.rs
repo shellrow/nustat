@@ -15,10 +15,18 @@ pub fn draw(f: &mut Frame, app: &mut App) {
         .iter()
         .map(|t| text::Line::from(Span::styled(*t, Style::default().fg(Color::Green))))
         .collect();
-    let tabs = Tabs::new(titles)
-        .block(Block::default().borders(Borders::ALL).title(app.get_title()))
+    let tabs = if app.should_pause {
+        let pause_title = format!("{} [Paused] press <SPACE> to resume", app.title);
+        Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title(pause_title).style(Style::default().fg(Color::Yellow)))
         .highlight_style(Style::default().fg(Color::LightBlue))
-        .select(app.tabs.index);
+        .select(app.tabs.index)
+    } else {
+        Tabs::new(titles)
+        .block(Block::default().borders(Borders::ALL).title(app.title))
+        .highlight_style(Style::default().fg(Color::LightBlue))
+        .select(app.tabs.index)
+    };
     f.render_widget(tabs, chunks[0]);
     match app.tabs.index {
         0 => draw_overview_tab(f, app, chunks[1]),
