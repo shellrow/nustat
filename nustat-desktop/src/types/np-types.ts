@@ -240,6 +240,7 @@ export interface HostDisplayInfo {
 
 export interface ServiceDisplayInfo {
     port: number,
+    protocol: string,
     name: string,
     traffic: TrafficInfo,
 }

@@ -3,7 +3,7 @@ import { ref, onMounted, onUnmounted } from 'vue';
 import { invoke } from '@tauri-apps/api/tauri';
 //import { listen } from '@tauri-apps/api/event';
 import { setRoutine } from '../libnp/routine';
-import { Overview } from '../types/np-types';
+import { Overview, ServiceDisplayInfo } from '../types/np-types';
 
 const autoUpdate = ref(true);
 const overview = ref<Overview>();
@@ -20,6 +20,10 @@ const routine = setRoutine({
 const GetOverview = async() => {
     const result = await invoke<Overview>('get_overview');
     overview.value = result;
+}
+
+const generateProtocolPortKey = (service: ServiceDisplayInfo) => {
+    return service.port + '/' + service.protocol;
 }
 
 onMounted(() => {
@@ -125,12 +129,12 @@ onUnmounted(() => {
                     <div class="surface-card shadow-2 border-round p-4">
                         <div class="text-xl text-900 font-medium mb-4">Top Protocols</div>
                         <ul class="list-none p-0 m-0">
-                            <div v-for=" service in overview?.top_app_protocols" :key="service.port">
+                            <div v-for=" service in overview?.top_app_protocols" :key="generateProtocolPortKey">
                                 <li class="flex flex-column md:flex-row md:align-items-center md:justify-content-between mb-4">
                                     <div class="flex">
                                         <div>
                                             <span class="block text-900 font-medium mb-1">{{ service.name }}</span>
-                                            <div class="text-600">{{ service.port }}/TCP</div>
+                                            <div class="text-600">{{ service.port }}/{{ service.protocol }}</div>
                                         </div>
                                     </div>
                                     <div class="mt-2 md:mt-0 flex flex-nowrap">

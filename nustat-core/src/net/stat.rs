@@ -795,6 +795,7 @@ impl NetStatData {
             if let Some(traffic) = protocol_port_map.get(protocol_port) {
                 let service = ServiceDisplayInfo {
                     port: protocol_port.port,
+                    protocol: protocol_port.protocol.as_str().to_string(),
                     name: service_db.tcp_map.get(&protocol_port.port).unwrap_or(&String::from("unknown")).clone(),
                     traffic: traffic.clone(),
                 };
