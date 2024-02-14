@@ -91,7 +91,7 @@ pub fn get_process_info(netstat: State<'_, Arc<NetStatStrage>>) -> Vec<ProcessTr
     connection_map.iter().for_each(|(conn, traffic_info)| {
         let local_socket: LocalSocket = LocalSocket {
             interface_name: conn.interface_name.clone(),
-            port: conn.remote_port,
+            port: conn.local_port,
             protocol: conn.protocol,
         };
         match local_socket_map.get(&local_socket) {
