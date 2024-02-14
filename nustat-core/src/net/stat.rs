@@ -683,7 +683,7 @@ impl NetStatData {
         self.connection_map.iter().for_each(|(conn, traffic_info)| {
             let local_socket: LocalSocket = LocalSocket {
                 interface_name: conn.interface_name.clone(),
-                port: conn.remote_port,
+                port: conn.local_port,
                 protocol: conn.protocol,
             };
             match self.local_socket_map.get(&local_socket) {

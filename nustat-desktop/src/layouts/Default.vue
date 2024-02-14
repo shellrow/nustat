@@ -79,7 +79,7 @@ onUnmounted(() => {
                         <router-link to="/">
                             <a v-ripple class="flex align-items-center cursor-pointer p-3 border-round text-700 hover:surface-100 transition-duration-150 transition-colors p-ripple">
                                 <i class="pi pi-home mr-2"></i>
-                                <span class="font-medium">Dashboard</span>
+                                <span class="font-medium">Overview</span>
                             </a>
                         </router-link>
                     </li>

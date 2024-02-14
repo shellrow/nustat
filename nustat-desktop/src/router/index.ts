@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import Dashboard from '../components/Dashboard.vue';
+import Overview from '../components/Overview.vue';
 import Packet from '../components/Packet.vue';
 import RemoteAddress from '../components/RemoteAddress.vue';
 import Socket from '../components/Socket.vue';
@@ -8,13 +8,13 @@ import Process from '../components/Process.vue';
 const routes = [
   {
     path: '/',
-    name: 'Dashboard',
-    component: Dashboard,
+    name: 'Overview',
+    component: Overview,
   },
   {
-    path: '/dashboard',
-    name: 'Dashboard2',
-    component: Dashboard,
+    path: '/overview',
+    name: 'Overview2',
+    component: Overview,
   },
   {
     path: '/packet',

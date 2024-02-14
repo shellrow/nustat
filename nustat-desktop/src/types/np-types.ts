@@ -258,8 +258,8 @@ export interface Notification {
 }
 
 export interface Overview {
-    default_if_index: number,
-    default_if_name: string,
+    if_index: number,
+    if_name: string,
     captured_packets: number,
     traffic: TrafficInfo,
     top_processes: ProcessDisplayInfo[],
